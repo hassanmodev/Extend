@@ -6,7 +6,7 @@ You can use Extend to introduce new syntax/features to the language of your choi
 ## Installation
 To get started you need to install Extend using 
 ```
-npm install -g extendx
+npm install -g extendx@0.3.1
 ```
 Please note we are going to use the name extend<u>x</u> for the cli for now.
 
