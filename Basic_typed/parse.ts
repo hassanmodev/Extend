@@ -1,24 +1,32 @@
-const parseTemplate = (temp, findVars = true) => {
+import settings from "./settings"
+
+const _parseTemplate = (text: string, findVars: boolean) => {
   var symbolsArray = "'\"\\/,`!@#$%^&*+-;:?><=[]{}().".split("");
   let terminals = [settings.variableOpening, settings.variableClosing];
   let arrTerminals = [settings.arrayOpening, settings.arrayClosing];
   let escapeChar = settings.escapeCharacter;
 
-  let array = [{ value: "" }];
-  let skipI = [];
+  type Entity = {
+    value?: string,
+    str?: string,
+    type?: string,
+    rest?: any,
+  }
+  let array: Entity[] = [{ value: "" }];
+  let skipI: Number[] = [];
 
   let inVar = false;
   let inArr = false;
 
-  for (let i = 0; i < temp.length; i++) {
+  for (let i = 0; i < text.length; i++) {
     // console.log(i)
-    const letter = temp[i];
+    const letter = text[i];
     let last = array.length ? array[array.length - 1] : array[0];
 
     if (skipI.includes(i)) {
       last.value = (last.value || "") + letter;
       last.str = (last.str || "") + letter;
-      if(symbolsArray.includes(letter)){
+      if (symbolsArray.includes(letter)) {
         last.type = 'symbol'
       }
       continue;
@@ -68,7 +76,7 @@ const parseTemplate = (temp, findVars = true) => {
         continue;
       }
     }
-    
+
     if (symbolsArray.includes(letter)) {
       array.push({
         value: letter,
@@ -117,17 +125,18 @@ const parseTemplate = (temp, findVars = true) => {
 
   array = array.filter((w) => Object.keys(w).length && w && w.value !== "");
 
-  array.map((word, i) => {
+  array.forEach((word, i) => {
     if (word.type === "arrayVar") {
       let obj = {
         type: "arrayVar",
         name: array[i - 1].value,
-        array: this.parseTemplate(word.str),
+        array: parseTemplate(word.str),
       };
       array[i] = obj;
       array.splice(i - 1, 1);
     } else if (word.type === "var") {
       // extract variable type
+      if (!word.value) return;
       word.value = word.value.trim();
       let wordArray = word.value.split(/\s/);
       if (wordArray.length > 1) {
@@ -164,7 +173,7 @@ let checkPair = (pairObj, word) => pairObj.array[1] === word;
 let unbalanced = (str, pairs) => {
   pairs = pairs || defaultPairs;
   if (!(pairs && pairs.length) || !str) return 0;
-  symbolStack = [];
+  let symbolStack: any[] = [];
   let tildeTemp = { array: ["${", "}"] };
   for (let i = 0; i < str.length; i++) {
     for (let j = 0; j < pairs.length; j++) {
@@ -189,6 +198,7 @@ let unbalanced = (str, pairs) => {
   }
   return symbolStack.length;
 };
-exports.parseTemplate = (str) => parseTemplate(str, true);
-exports.parseCode = (str) => parseTemplate(str, false);
+const parseTemplate = (str) => _parseTemplate(str, true);
+exports.parseTemplate = parseTemplate
+exports.parseCode = (str) => _parseTemplate(str, false);
 exports.unbalanced = unbalanced

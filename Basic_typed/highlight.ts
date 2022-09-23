@@ -29,13 +29,13 @@ var readSettings = () => {
   return settings;
 };
 
-var writeSettings = (settings) => {  
-  text = JSON.stringify(settings, "", 1);
+var writeSettings = (settings) => {
+  const text = JSON.stringify(settings, null, 1);
   if (text === lastSettings) return false
   lastSettings = text;
   try {
     fs.mkdirSync("./.vscode");
-  } catch (EEXIST) {}
+  } catch (EEXIST) { }
   fs.writeFileSync("./.vscode/settings.json", text);
 };
 
@@ -47,7 +47,7 @@ var createRegex = (words, terminals = ["`{{", "}}`"]) => {
   let text = "";
   terminals = [escapeRegex(terminals[0]), escapeRegex(terminals[1])];
 
-  let groups = [];
+  let groups: any[] = [];
   let r = "";
   let group = (string) => r + "(" + string + ")" + r;
 
@@ -56,7 +56,7 @@ var createRegex = (words, terminals = ["`{{", "}}`"]) => {
 
   groups.push(colors["terminals"]);
 
-  nextStaticString = (words) => {
+  const nextStaticString = (words) => {
     words.push({ type: "word", value: group(escapeRegex(terminals[1])) });
     return words.reduce((prev, curr) => {
       if (curr.type !== "word") return prev;
@@ -64,34 +64,34 @@ var createRegex = (words, terminals = ["`{{", "}}`"]) => {
     }, "");
   };
 
-  var nextWord = (words, i) => words.slice(i).find(w => w.type ==='word' || w.type==='symbol')  
-  
+  var nextWord = (words, i) => words.slice(i).find(w => w.type === 'word' || w.type === 'symbol')
+
   words.forEach((word, i) => {
     if (word.type === "word" || word.type === "symbol") {
       text += group("[\\s]*" + escapeRegex(word.value) + "[\\s]*");
-      groups.push( colors[word.type] || colors["default"] );
+      groups.push(colors[word.type] || colors["default"]);
     } else {
       let next = nextWord(words, i)
-      if(!next || !next.value) return ''
+      if (!next || !next.value) return ''
       let escaped = escapeRegex(next.value)
-      let ored = escaped ? escaped+'|'+terminals[1] : escaped
+      let ored = escaped ? escaped + '|' + terminals[1] : escaped
 
       // console.log(anyButWord(ored), escaped)
 
-      text += `${(anyButWord(ored)||anyButWord(terminals[1]))}`;
-      groups.push( colors[word.type] || colors["default"] );
+      text += `${(anyButWord(ored) || anyButWord(terminals[1]))}`;
+      groups.push(colors[word.type] || colors["default"]);
     }
   });
 
   text += group(terminals[1]);
-  groups.push( colors["terminals"] );
+  groups.push(colors["terminals"]);
 
   return { [text]: groups };
 };
 
 let clearSettings = (settings) => {
-  for(let key in settings)
-    if (key.slice(0, 10)==='highlight.')
+  for (let key in settings)
+    if (key.slice(0, 10) === 'highlight.')
       delete settings[key]
 
   writeSettings(settings)
@@ -116,7 +116,7 @@ var start = (userRules, terminals) => {
   // default case
   settings["highlight.regexes"][
     `(${terminals[0]})${anyButWord(terminals[1])}(${terminals[1]})`
-  ] = [ colors.terminals, colors.default, colors.terminals ];
+  ] = [colors.terminals, colors.default, colors.terminals];
 
   writeSettings(settings)
 };

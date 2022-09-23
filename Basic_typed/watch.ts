@@ -1,10 +1,9 @@
 // next up better var detection
 // handle deleted files
-
+import path = require("path");
 var commandLineArgs = require("command-line-args");
 var fs = require("fs");
 var fse = require("fs-extra");
-var path = require("path");
 var chokidar = require("chokidar");
 var example = require("./example");
 var highlight = require('./highlight')
@@ -18,6 +17,8 @@ var folders // = ["src", "dist"];
 var extentions = [["xt"], ["xt", "js"]];
 var defaultRulesFileName = "_extend.js";
 var rulesFileName = "_extend.js";
+let rulesfullName = ''
+let srcDirectory = ''
 // var currentDirectory = process.cwd()
 // var srcDirectory = path.join(currentDirectory, folders[0]);
 // var rulesfullName = path.join(currentDirectory, folders[0], rulesFileName);
@@ -25,7 +26,7 @@ var rulesFileName = "_extend.js";
 
 global.msg = (...msgs) => {
   let time = new Date().toLocaleString().split(' ')[1]
-  console.log(`${time}|`,...msgs)
+  console.log(`${time}|`, ...msgs)
 }
 
 var optionDefinitions = [
@@ -54,7 +55,8 @@ var compileModule = require("./compile");
 try {
   var cliOptions = commandLineArgs(optionDefinitions);
 } catch (error) {
-  console.log("Unknown argument", error.optionName);
+  const e: any = error;
+  console.log("Unknown argument", e.optionName);
   console.log("Use -h for instructions.");
   process.exit();
 }
@@ -71,12 +73,12 @@ if (cliOptions.help) {
   });
 }
 
-getSettingsFile = fileName => {
+const getSettingsFile = fileName => {
   try {
     Object.keys(require.cache).forEach(function (key) { delete require.cache[key] })
     userRules = require(path.join(fileName));
-    global.settingsFile = {...global.settingsFile, ...userRules}
-    global.settings = {...global.settings, ...userRules.settings || {}}
+    global.settingsFile = { ...global.settingsFile, ...userRules }
+    global.settings = { ...global.settings, ...userRules.settings || {} }
     return userRules;
   } catch (MODULE_NOT_FOUND) {
     console.log("rules file not found, make sure you have a valid _extend.js file at the current directory.");
@@ -88,7 +90,7 @@ var getUserRules = (fileName) => {
   // todo reload module: again.. no idea, sometimes it would fail when opening file, need to change how i reload modules.
   let maxAttempets = 15
   for (let i = 0; i < maxAttempets; i++) {
-    if(!Object.keys(settingsFile).length) {settingsFile = getSettingsFile(fileName)}
+    if (!Object.keys(settingsFile).length) { settingsFile = getSettingsFile(fileName) }
     else break
   }
   var userRules = settingsFile.rules;
@@ -99,7 +101,7 @@ var getUserRules = (fileName) => {
 };
 
 var writeToFile = (processed, fileName) => {
-  if(!processed) return global.msg(`${fileName}: got nothing to write.`)
+  if (!processed) return global.msg(`${fileName}: got nothing to write.`)
   fse.outputFileSync(fileName, processed);
   global.msg('Success.')
 };
@@ -117,18 +119,18 @@ var lastSaved = {}
 var localCompile = async fileName => {
   // this time difference thing is because of an issue with vscode when saving
   let minTime = 200
-  let last = lastSaved[fileName]||0
+  let last = lastSaved[fileName] || 0
   let time = Date.now()
-  if(last && time-last < minTime ){ return }
+  if (last && time - last < minTime) { return }
   lastSaved[fileName] = Date.now()
 
   let badFileReg = new RegExp(`${badDirectories.join('|')}`)
   if (fileName.match(badFileReg)) {
-    return console.log('xxxxxx bad dir')
+    return console.log('bad dir')
   }
 
   // again, vscode
-  await ( new Promise(res => setTimeout(res, minTime) ) )
+  await (new Promise(res => setTimeout(res, minTime)))
   var shoudCompile = name => {
     var nameList = name.split(".");
     if (path.basename(name) === rulesFileName) { return 'rules'; }
@@ -137,7 +139,7 @@ var localCompile = async fileName => {
     return false;
   };
 
-  
+
   var writeName = getPathAfterSrc(fileName);
   var shouldCompile = shoudCompile(fileName);
   if (shouldCompile === 'rules') {
@@ -145,7 +147,7 @@ var localCompile = async fileName => {
     global.msg('Updated rules.')
     return 1;
   }
-  if (!shouldCompile){
+  if (!shouldCompile) {
     return writeToFile(fs.readFileSync(fileName).toString(), writeName);
   }
   try {
@@ -159,7 +161,7 @@ var localCompile = async fileName => {
 
   var value = compileModule.processCode(sourceCode, userRules, 0, getFileName(fileName).slice(1)).text;
   let maxAttempets = 5
-  for(let i=0; i<maxAttempets && !value; i++) {
+  for (let i = 0; i < maxAttempets && !value; i++) {
     value = compileModule.processCode(sourceCode, userRules, settings).text;
   }
 
@@ -170,9 +172,9 @@ var localCompile = async fileName => {
 
 function unlink(fileName) {
   fs.unlink(fileName, error => {
-    if(error){
-      if(error.code==='ENOENT') return 1
-      return console.log("delete error", {...error});
+    if (error) {
+      if (error.code === 'ENOENT') return 1
+      return console.log("delete error", { ...error });
     }
     global.msg('Deleted.')
   });
@@ -182,7 +184,7 @@ watcher
   .on("add", localCompile)
   .on("change", localCompile)
   .on('unlink', fileName => unlink(getPathAfterSrc(fileName)))
-  .on("error", function (error) {
+  .on("error", function (e) {
     console.log("An error has occured error...\n", e);
   });
 
@@ -190,16 +192,16 @@ watcher
 const startWatching = () => {
   global.msg("Started..");
   rulesFileName = "_extend.js";
-  
+
   var extentions = [["xt"], ["xt", "js"]];
   var currentDirectory = process.cwd()
-  
+
   rulesfullName = path.join(currentDirectory, rulesFileName);
 
   userRules = getUserRules(rulesfullName);
 
-  settingsFile = getSettingsFile(rulesfullName)
-  settings = {...defaultSettings, ...settingsFile.settings}
+  const settingsFile = getSettingsFile(rulesfullName)
+  settings = { ...defaultSettings, ...settingsFile.settings }
   folders = [settings.srcFolder, settings.distFolder]
 
   srcDirectory = path.join(currentDirectory, folders[0]);

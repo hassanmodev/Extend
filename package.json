@@ -8,6 +8,8 @@
     "extendx": "extend"
   },
   "scripts": {
+    "t": "tsc basic_typed/watch.ts",
+    "typed": "tsc basic_typed/watch.ts",
     "start": "node basic/watch.js",
     "w": "node basic/watch.js",
     "test": "echo \"Error: no test specified\" && exit 1"

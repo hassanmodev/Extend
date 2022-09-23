@@ -1,17 +1,8 @@
+import settings, { unmatchedTextFunction } from "./settings"
 // todo handle bad rules
 
 let parse = require("./parse");
-var settings = {
-  settings: false,
-  showNotMatched: true,
-  unmatchedTextFunction: (block, file='') => {
-    if(file) file += '|'
-    console.log(`${file} none of the rules matched:${block.slice(0, 8)}`)
-    return `/* none of the rules matched ${block}*/`
-  },
-  showMatchedRules: false
-}
-var unmatchedText = () => ''
+var unmatchedText: typeof unmatchedTextFunction = () => ''
 if (settings.showNotMatched) unmatchedText = settings.unmatchedTextFunction
 
 const compileBlock = (sourceCode, codeMarkers, userRules) => {
@@ -35,17 +26,17 @@ const compileBlock = (sourceCode, codeMarkers, userRules) => {
 };
 
 const range = (start, end) => {
-  let array = [];
+  let array: Number[] = [];
   for (let i = start; i < end; i++) array.push(i);
   return array;
 };
-exports.processCode = (sourceCode, userRules, IS_ARRAY_CALL = false, fileName) => {
+const processCode = (sourceCode, userRules, IS_ARRAY_CALL = false, fileName = '') => {
   // IS_ARRAY_CALL && console.log(sourceCode)
   // extract and process code in place
   const find = (str, needle, i) => str.slice(i, i + needle.length) === needle;
-  codeMarkers = [global.settings.codeOpening, global.settings.codeClosing]
+  const codeMarkers = [settings.codeOpening, settings.codeClosing]
   const strChars = ['"', "'", "`"];
-  var ingoreI = [];
+  var ingoreI: Number[] = [];
   var isOpen = false;
   var inStr = { is: false, char: "" };
   var accumulator = "";
@@ -59,7 +50,7 @@ exports.processCode = (sourceCode, userRules, IS_ARRAY_CALL = false, fileName) =
     let foundCloseCode = find(sourceCode, codeMarkers[1], i);
     // nested calls
     if (foundOpenCode) {
-      var res = this.processCode(
+      var res = processCode(
         sourceCode.slice(i + codeMarkers[0].length),
         userRules,
       ).text;
@@ -72,9 +63,9 @@ exports.processCode = (sourceCode, userRules, IS_ARRAY_CALL = false, fileName) =
     else if (foundCloseCode) {
       ingoreI.push(...range(i, i + codeMarkers[1].length));
       if (accumulator) { outputText += compileBlock(accumulator, codeMarkers, userRules); }
-      return {text: outputText};
+      return { text: outputText };
     }
-    
+
     else if (isOpen) accumulator += letter.value;
     else if (!isOpen) { outputText += letter.value || letter; }
   }
@@ -82,13 +73,13 @@ exports.processCode = (sourceCode, userRules, IS_ARRAY_CALL = false, fileName) =
   if (accumulator)
     outputText += compileBlock(accumulator, codeMarkers, userRules);
 
-  return {text: outputText};
+  return { text: outputText };
 };
 
 
 let handleRules = (tesingFull) => {
   let userRules = tesingFull.rules
-  if(!userRules || !Array.isArray(userRules) || !userRules.length){
+  if (!userRules || !Array.isArray(userRules) || !userRules.length) {
     console.log('An error has occured, cant get rules', userRules, tesingFull)
     process.exit()
   }
@@ -118,7 +109,7 @@ var isRightKeyword = (found, rule, i) => {
   return found && word && found.value === word.value;
 };
 
-const getVariables = (rule, found, codeMarkers, wordAfterArray = 0, index = 'unknown') => {
+const getVariables = (rule, found, codeMarkers, wordAfterArray: any = 0, index = 'unknown') => {
   // rmv codemarkers
   // vars is the object returned containing all variables extracted
   // adj is a cursor to keep up with different indexes between template and found eg: variables consiting of more than one word
@@ -157,17 +148,18 @@ const getVariables = (rule, found, codeMarkers, wordAfterArray = 0, index = 'unk
       break
     }
 
-
+    // #fix
     if (tempWord.type === 'arrayVar') {
-      let sliceStart = foundIndex + 1
-      let processed = getVariables({ parsed: tempWord.array },
-        found.slice(sliceStart),
-        codeMarkers,
-        template[tempIndex + 1]
-      )
-      vars[tempWord.name] = processed
-      tempIndex++
-      tempRealIndex++
+      console.log('array var is disabled')
+      // let sliceStart = foundIndex + 1
+      // let processed = getVariables({ parsed: tempWord.array },
+      //   found.slice(sliceStart),
+      //   codeMarkers,
+      //   template[tempIndex + 1]
+      // )
+      // vars[tempWord.name] = processed
+      // tempIndex++
+      // tempRealIndex++
       continue;
     }
 
@@ -191,15 +183,15 @@ const getVariables = (rule, found, codeMarkers, wordAfterArray = 0, index = 'unk
         }
 
       if (wordAfterArray)
-        if (nextTempWord && wordAfterArray.value === foundWord.value) breakOutside = 2
+        if (nextTempWord && wordAfterArray.value === foundWord.value) breakOutside = true
 
       // am i looking at the next word in template?
       // todo check if variable allows for unbalanced parentheses. 
       if (isRightKeyword(foundWord, rule, tempIndex + 1)) {
         let lastFoundVar = vars[tempWord.value]
         // is the current state of variable balanced?
-        if(!parse.unbalanced(lastFoundVar)){
-          if (!breakInside && !breakOutside){
+        if (!parse.unbalanced(lastFoundVar)) {
+          if (!breakInside && !breakOutside) {
             skipI = true;
             break
           }
@@ -208,7 +200,7 @@ const getVariables = (rule, found, codeMarkers, wordAfterArray = 0, index = 'unk
 
       // am i looking at the current word in template?
       if (tempWord.type !== "var" && isRightKeyword(foundWord, rule, tempIndex)) {
-        if (!breakInside && !breakOutside){
+        if (!breakInside && !breakOutside) {
           // -------------------------->
           // if(parse.unbalanced())
           break
@@ -225,7 +217,7 @@ const getVariables = (rule, found, codeMarkers, wordAfterArray = 0, index = 'unk
     }
 
     tempIndex++; tempRealIndex++;
-    if (breakOutside) { breakOutside = 0; break; }
+    if (breakOutside) { breakOutside = false; break; }
   }
 
   var tempVars = rule.parsed.filter((k) => ["var", 'arrayVar'].includes(k.type));
@@ -235,10 +227,10 @@ const getVariables = (rule, found, codeMarkers, wordAfterArray = 0, index = 'unk
   if (wordAfterArray) {
     for (var arrayIndex in arrayVars) {
       var block = arrayVars[arrayIndex]
-      if(!listHasBlock(tempVars, block)) arrayVars.splice(arrayIndex, 1) 
+      if (!listHasBlock(tempVars, block)) arrayVars.splice(+arrayIndex, 1)
     }
   } else {
-    if(!listHasBlock(tempVars, vars)) return false;
+    if (!listHasBlock(tempVars, vars)) return false;
   }
 
 
@@ -259,23 +251,23 @@ var listHasBlock = (list, block) => {
       settings.showNotFound && console.log(variable.value || variable.name, 'not found in', block)
       return false;
     }
-    if(!variable.rest) continue
+    if (!variable.rest) continue
     let type = variable.rest[0]
-    if(type){
+    if (type) {
       extractedValue = extractedValue.trim()
       let filter = global.settingsFile.types[type]
-      if(!filter){
+      if (!filter) {
         console.log(`type "${variable.rest[0]}" didn't match any type`)
         return false
       }
-      if(filter instanceof RegExp) {
-        if(!extractedValue.match(filter)){
+      if (filter instanceof RegExp) {
+        if (!extractedValue.match(filter)) {
           console.log(extractedValue, 'didn\'t match regex', filter)
           return false
         }
-      }else if(filter instanceof Function){
+      } else if (filter instanceof Function) {
         let returned = filter(extractedValue)
-        if(returned===false) {
+        if (returned === false) {
           console.log(extractedValue, 'didn\'t match type', type)
           return false
         }
@@ -284,4 +276,6 @@ var listHasBlock = (list, block) => {
     }
   }
   return true
-}
+};
+
+export { processCode };
