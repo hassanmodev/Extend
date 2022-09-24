@@ -131,7 +131,7 @@ const getVariables = (rule, toknized: Token[], codeMarkers, wordAfterArray: any 
     if (!wordAfterArray) {
       if (templateIndex === template.length) {
         templateIndex = 0
-        tempWord = template[templateIndex]
+        templateWord = template[templateIndex]
         insertArrayBlock = true
       }
     }
@@ -141,28 +141,28 @@ const getVariables = (rule, toknized: Token[], codeMarkers, wordAfterArray: any 
       // console.log(`error: max iterations reached at code block ${index}. this may or may not be an issue ¯\\_(ツ)_/¯`)
       break
     }
-    var tempWord = template[templateIndex];
-    if (!tempWord) {
+    var templateWord = template[templateIndex];
+    if (!templateWord) {
       console.log('no temp word', templateIndex, template)
       break
     }
 
     // #fix
-    if (tempWord.type === 'arrayVar') {
+    if (templateWord.type === 'arrayVar') {
       console.log('array var is disabled')
       // let sliceStart = foundIndex + 1
-      // let processed = getVariables({ parsed: tempWord.array },
+      // let processed = getVariables({ parsed: templateWord.array },
       //   found.slice(sliceStart),
       //   codeMarkers,
       //   template[tempIndex + 1]
       // )
-      // vars[tempWord.name] = processed
+      // vars[templateWord.name] = processed
       // tempIndex++
       // tempRealIndex++
       continue;
     }
 
-    inVar = tempWord.type === "var";
+    inVar = templateWord.type === "var";
     if (skipI) {
       skipI = false;
       template_index_adjust--;
@@ -187,7 +187,7 @@ const getVariables = (rule, toknized: Token[], codeMarkers, wordAfterArray: any 
       // am i looking at the next word in template?
       // todo check if variable allows for unbalanced parentheses. 
       if (isRightKeyword(foundWord, rule, templateIndex + 1)) {
-        let lastFoundVar = vars[tempWord.value]
+        let lastFoundVar = vars[templateWord.value]
         // is the current state of variable balanced?
         if (!parse.unbalanced(lastFoundVar)) {
           if (!breakFor && !breakWhile) {
@@ -198,7 +198,7 @@ const getVariables = (rule, toknized: Token[], codeMarkers, wordAfterArray: any 
       }
 
       // am i looking at the current word in template?
-      if (tempWord.type !== "var" && isRightKeyword(foundWord, rule, templateIndex)) {
+      if (templateWord.type !== "var" && isRightKeyword(foundWord, rule, templateIndex)) {
         if (!breakFor && !breakWhile) {
           // -------------------------->
           // if(parse.unbalanced())
@@ -210,9 +210,9 @@ const getVariables = (rule, toknized: Token[], codeMarkers, wordAfterArray: any 
       // #todo did i diable this?
       if (wordAfterArray) {
         if (insertArrayBlock) { arrayVars.push({}); insertArrayBlock = false }
-        addVariable(foundWord, tempWord, arrayVars[arrayVars.length - 1])
+        addVariable(foundWord, templateWord, arrayVars[arrayVars.length - 1])
       }
-      if (inVar) addVariable(foundWord, tempWord, vars)
+      if (inVar) addVariable(foundWord, templateWord, vars)
       if (breakFor) { breakFor = 0; break; }
     }
 
@@ -238,9 +238,9 @@ const getVariables = (rule, toknized: Token[], codeMarkers, wordAfterArray: any 
   return vars;
 };
 
-var addVariable = (foundWord, tempWord, foundVariables) => {
-  foundVariables[tempWord.value] = foundVariables[tempWord.value] || "";
-  foundVariables[tempWord.value] += foundWord.str || foundWord.value
+var addVariable = (foundWord, templateWord, foundVariables) => {
+  foundVariables[templateWord.value] = foundVariables[templateWord.value] || "";
+  foundVariables[templateWord.value] += foundWord.str || foundWord.value
 }
 exports.handleRules = handleRules;
 
