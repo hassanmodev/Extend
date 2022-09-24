@@ -1,19 +1,19 @@
 import settings from "./settings"
 
-const _parseTemplate = (text: string, findVars: boolean) => {
+export type Token = {
+  value?: string,
+  str?: string,
+  type?: string,
+  rest?: any,
+}
+const _parseTemplate = (text: string, findVars: boolean): Token[] => {
   var symbolsArray = "'\"\\/,`!@#$%^&*+-;:?><=[]{}().".split("");
   let terminals = [settings.variableOpening, settings.variableClosing];
   let arrTerminals = [settings.arrayOpening, settings.arrayClosing];
   let escapeChar = settings.escapeCharacter;
 
-  type Entity = {
-    value?: string,
-    str?: string,
-    type?: string,
-    rest?: any,
-  }
-  let array: Entity[] = [{ value: "" }];
-  let skipI: Number[] = [];
+  let array: Token[] = [{ value: "" }];
+  let skipIndex: Number[] = [];
 
   let inVar = false;
   let inArr = false;
@@ -23,7 +23,7 @@ const _parseTemplate = (text: string, findVars: boolean) => {
     const letter = text[i];
     let last = array.length ? array[array.length - 1] : array[0];
 
-    if (skipI.includes(i)) {
+    if (skipIndex.includes(i)) {
       last.value = (last.value || "") + letter;
       last.str = (last.str || "") + letter;
       if (symbolsArray.includes(letter)) {
@@ -31,11 +31,11 @@ const _parseTemplate = (text: string, findVars: boolean) => {
       }
       continue;
     } else if (letter === escapeChar) {
-      skipI.push(i + 1);
+      skipIndex.push(i + 1);
       continue;
     }
 
-    // find vars is for parsing templates..
+    // findvars is for parsing templates..
     if (findVars) {
       if (arrTerminals[0] === letter) {
         inArr = true;
@@ -86,16 +86,7 @@ const _parseTemplate = (text: string, findVars: boolean) => {
       array.push({});
       continue;
     } else {
-
-      if (symbolsArray.includes(letter)) {
-        array.push({
-          value: letter,
-          type: "symbol",
-          str: letter,
-        });
-        array.push({});
-        continue;
-      } else if (letter.match(/\s/)) {
+      if (letter.match(/\s/)) {
         let tmp = array.length - 1;
         while (tmp >= 0) {
           if (array[tmp].value) {
@@ -125,8 +116,14 @@ const _parseTemplate = (text: string, findVars: boolean) => {
 
   array = array.filter((w) => Object.keys(w).length && w && w.value !== "");
 
+  const ll = (...a) => {
+    // if (!findVars)
+    //   console.log(...a)
+  }
   array.forEach((word, i) => {
+    ll(word)
     if (word.type === "arrayVar") {
+      ll('ind222')
       let obj = {
         type: "arrayVar",
         name: array[i - 1].value,
@@ -135,10 +132,12 @@ const _parseTemplate = (text: string, findVars: boolean) => {
       array[i] = obj;
       array.splice(i - 1, 1);
     } else if (word.type === "var") {
-      // extract variable type
+      ll('xxxx')
       if (!word.value) return;
       word.value = word.value.trim();
       let wordArray = word.value.split(/\s/);
+      if (!findVars)
+        console.log(word, wordArray, findVars)
       if (wordArray.length > 1) {
         word.rest = wordArray.slice(0, -1);
         word.value = wordArray[wordArray.length - 1];
@@ -198,7 +197,11 @@ let unbalanced = (str, pairs) => {
   }
   return symbolStack.length;
 };
-const parseTemplate = (str) => _parseTemplate(str, true);
-exports.parseTemplate = parseTemplate
-exports.parseCode = (str) => _parseTemplate(str, false);
-exports.unbalanced = unbalanced
+// const parseTemplate = (str) => _parseTemplate(str, true);
+const parseCode = (str) => _parseTemplate(str, false)
+const parseTemplate = (str) => _parseTemplate(str, true)
+export {
+  parseCode,
+  parseTemplate,
+  unbalanced
+}

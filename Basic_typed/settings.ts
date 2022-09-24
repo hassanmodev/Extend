@@ -11,12 +11,15 @@ const settings = {
   showMatchedRules: false,
   showNotFound: false,
 
-  variableOpening: '',
-  variableClosing: '',
-  arrayOpening: '',
-  arrayClosing: '',
-  escapeCharacter: '',
-  codeOpening: '',
-  codeClosing: ''
+  srcFolder: 't1',
+  distFolder: 't2',
+  codeOpening: '`{{',
+  codeClosing: '}}`',
+  variableOpening: '{',
+  variableClosing: '}',
+  arrayOpening: '[',
+  arrayClosing: ']',
+  escapeCharacter: '#',
+  vscodeHighlighting: true
 }
 export default settings; 
