@@ -8,12 +8,11 @@ if (settings.showNotMatched) unmatchedText = settings.unmatchedTextFunction
 
 const compileBlock = (sourceCode, codeMarkers, userRules) => {
   try {
-    // console.log('got block')
     let tokenized = parse.parseCode(sourceCode);
-    let rules = [userRules.at(-1)];
+    let rules = userRules;
     for (const ruleIndex in rules) {
       let rule = rules[ruleIndex]
-      let variables = getVariables(rule, tokenized, codeMarkers, 0, ruleIndex);
+      let variables = getVariables(rule, tokenized, 0, ruleIndex);
       if (!variables) continue;
       let result = rule.output(variables);
       if (result != false) {
@@ -110,7 +109,7 @@ var isRightKeyword = (found, rule, i) => {
   return found && word && found.value === word.value;
 };
 
-const getVariables = (rule, toknized: Token[], codeMarkers, wordAfterArray: any = 0, index = 'unknown') => {
+const getVariables = (rule, toknized: Token[], wordAfterArray: any = 0, index = 'unknown') => {
   // rmv codemarkers
   // vars is the object returned containing all variables extracted
   // adj is a cursor to keep up with different indexes between template and found eg: variables consiting of more than one word
@@ -184,6 +183,16 @@ const getVariables = (rule, toknized: Token[], codeMarkers, wordAfterArray: any 
       if (wordAfterArray)
         if (nextTempWord && wordAfterArray.value === foundWord.value) breakWhile = true
 
+
+      // am i looking at the current word in template?
+      if (templateWord.type !== "var" && isRightKeyword(foundWord, rule, templateIndex)) {
+        if (!breakFor && !breakWhile) {
+          // -------------------------->
+          // if(parse.unbalanced())
+          break
+        }
+      }
+
       // am i looking at the next word in template?
       // todo check if variable allows for unbalanced parentheses. 
       if (isRightKeyword(foundWord, rule, templateIndex + 1)) {
@@ -196,16 +205,6 @@ const getVariables = (rule, toknized: Token[], codeMarkers, wordAfterArray: any 
           }
         }
       }
-
-      // am i looking at the current word in template?
-      if (templateWord.type !== "var" && isRightKeyword(foundWord, rule, templateIndex)) {
-        if (!breakFor && !breakWhile) {
-          // -------------------------->
-          // if(parse.unbalanced())
-          break
-        }
-      }
-
       template_index_adjust++;
       // #todo did i diable this?
       if (wordAfterArray) {
