@@ -1,6 +1,7 @@
 // next up better var detection
 // handle deleted files
 import path = require("path");
+import beautify from 'js-beautify'
 var commandLineArgs = require("command-line-args");
 var fs = require("fs");
 var fse = require("fs-extra");
@@ -102,6 +103,7 @@ var getUserRules = (fileName) => {
 
 var writeToFile = (processed, fileName) => {
   if (!processed) return global.msg(`${fileName}: got nothing to write.`)
+  processed = beautify(processed)
   fse.outputFileSync(fileName, processed);
   global.msg('Success.')
 };
@@ -159,10 +161,10 @@ var localCompile = async fileName => {
     return 1;
   }
 
-  var value = compileModule.processCode(sourceCode, userRules, 0, getFileName(fileName).slice(1)).text;
+  var value = compileModule.processCode(sourceCode, userRules, getFileName(fileName).slice(1)).text;
   let maxAttempets = 5
   for (let i = 0; i < maxAttempets && !value; i++) {
-    value = compileModule.processCode(sourceCode, userRules, settings).text;
+    value = compileModule.processCode(sourceCode, userRules).text;
   }
 
   if (shouldCompile === "xt.js") writeName = writeName.replace(".xt", "");

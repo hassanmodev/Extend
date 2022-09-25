@@ -169,7 +169,7 @@ let defaultPairs = [
 ];
 
 let checkPair = (pairObj, word) => pairObj.array[1] === word;
-let unbalanced = (str, pairs) => {
+let unbalanced = (str, pairs?) => {
   pairs = pairs || defaultPairs;
   if (!(pairs && pairs.length) || !str) return 0;
   let symbolStack: any[] = [];
