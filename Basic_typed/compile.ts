@@ -1,17 +1,16 @@
-import { Token } from "./parse";
+import { parseTemplate, Token, unbalanced } from "./parse";
 import settings, { unmatchedTextFunction } from "./settings"
+import { parseCode } from "./parse";
 // todo handle bad rules
 
-let parse = require("./parse");
 var unmatchedText: typeof unmatchedTextFunction = () => ''
 if (settings.showNotMatched) unmatchedText = settings.unmatchedTextFunction
 
-const compileBlock = (sourceCode, codeMarkers, userRules) => {
+const compileBlock = (sourceCode: string, userRules: any[]) => {
   try {
-    let tokenized = parse.parseCode(sourceCode);
-    let rules = userRules;
-    for (const ruleIndex in rules) {
-      let rule = rules[ruleIndex]
+    let tokenized = parseCode(sourceCode);
+    for (const ruleIndex in userRules) {
+      let rule = userRules[ruleIndex]
       let variables = getVariables(rule, tokenized, 0, ruleIndex);
       if (!variables) continue;
       let result = rule.output(variables);
@@ -25,20 +24,18 @@ const compileBlock = (sourceCode, codeMarkers, userRules) => {
   }
 };
 
-const range = (start, end) => {
+const range = (start: number, end: number) => {
   let array: Number[] = [];
   for (let i = start; i < end; i++) array.push(i);
   return array;
 };
-const processCode = (sourceCode, userRules, IS_ARRAY_CALL = false, fileName = '') => {
+const processCode = (sourceCode, userRules, fileName = '') => {
   // IS_ARRAY_CALL && console.log(sourceCode)
   // extract and process code in place
   const find = (str, needle, i) => str.slice(i, i + needle.length) === needle;
   const codeMarkers = [settings.codeOpening, settings.codeClosing]
-  const strChars = ['"', "'", "`"];
   var ingoreI: Number[] = [];
   var isOpen = false;
-  var inStr = { is: false, char: "" };
   var accumulator = "";
   let outputText = "";
 
@@ -55,14 +52,14 @@ const processCode = (sourceCode, userRules, IS_ARRAY_CALL = false, fileName = ''
         userRules,
       ).text;
       if (res) {
-        outputText += compileBlock(res, codeMarkers, userRules) || unmatchedText(res, fileName);
+        outputText += compileBlock(res, userRules) || unmatchedText(res, fileName);
         ingoreI.push(...range(i, i + res.length + 2 * codeMarkers[1].length));
       }
     }
     // code finished.. return
     else if (foundCloseCode) {
       ingoreI.push(...range(i, i + codeMarkers[1].length));
-      if (accumulator) { outputText += compileBlock(accumulator, codeMarkers, userRules); }
+      if (accumulator) { outputText += compileBlock(accumulator, userRules); }
       return { text: outputText };
     }
 
@@ -71,7 +68,7 @@ const processCode = (sourceCode, userRules, IS_ARRAY_CALL = false, fileName = ''
   }
 
   if (accumulator)
-    outputText += compileBlock(accumulator, codeMarkers, userRules);
+    outputText += compileBlock(accumulator, userRules);
 
   return { text: outputText };
 };
@@ -84,7 +81,7 @@ let handleRules = (tesingFull) => {
     process.exit()
   }
   for (const rule of userRules) {
-    rule.parsed = parse.parseTemplate(rule.template);
+    rule.parsed = parseTemplate(rule.template);
     rule.enum = rule.parsed.map((word) => {
       if (word.type === "word") {
         if (!rule.config) return word;
@@ -198,7 +195,7 @@ const getVariables = (rule, toknized: Token[], wordAfterArray: any = 0, index = 
       if (isRightKeyword(foundWord, rule, templateIndex + 1)) {
         let lastFoundVar = vars[templateWord.value]
         // is the current state of variable balanced?
-        if (!parse.unbalanced(lastFoundVar)) {
+        if (!unbalanced(lastFoundVar)) {
           if (!breakFor && !breakWhile) {
             skipI = true;
             break
