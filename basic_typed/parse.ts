@@ -6,7 +6,7 @@ export type Token = {
   type?: string,
   rest?: any,
 }
-const _parseTemplate = (text: string, findVars: boolean): Token[] => {
+const _parseTemplate = (text: string, parsingRule: boolean): Token[] => {
   var symbolsArray = "'\"\\/,`!@#$%^&*+-;:?><=[]{}().".split("");
   let terminals = [settings.variableOpening, settings.variableClosing];
   let arrTerminals = [settings.arrayOpening, settings.arrayClosing];
@@ -36,13 +36,16 @@ const _parseTemplate = (text: string, findVars: boolean): Token[] => {
     }
 
     // findvars is for parsing templates..
-    if (findVars) {
+    if (parsingRule) {
       if (arrTerminals[0] === letter) {
-        inArr = true;
-        inVar = true;
-        array.push({ value: "", type: "arrayVar" });
-        continue;
-      } else if (arrTerminals[1] === letter) {
+        console.error(`Array variables are disabled: {arrayname}[...], please remove this rule: \n"${text.substring(0, 40)}"`)
+        process.exit()
+        // inArr = true;
+        // inVar = true;
+        // array.push({ value: "", type: "arrayVar" });
+        // continue;
+      }
+      else if (arrTerminals[1] === letter) {
         inArr = false;
         inVar = true;
         array.push({ type: "word", value: "" });
@@ -136,8 +139,8 @@ const _parseTemplate = (text: string, findVars: boolean): Token[] => {
       if (!word.value) return;
       word.value = word.value.trim();
       let wordArray = word.value.split(/\s/);
-      if (!findVars)
-        console.log(word, wordArray, findVars)
+      if (!parsingRule)
+        console.log(word, wordArray, parsingRule)
       if (wordArray.length > 1) {
         word.rest = wordArray.slice(0, -1);
         word.value = wordArray[wordArray.length - 1];
