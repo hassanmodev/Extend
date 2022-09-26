@@ -1,8 +1,7 @@
 # Extend
 
-Extend is the tool to bring your ideas into reality,
+Extend is the tool to bring your the syntax you want to the language of your choice.
 
-You can use Extend to introduce new syntax/features to the language of your choice in the matter of minutes.
 ## Installation
 To get started you need to install Extend using 
 ```
@@ -73,8 +72,9 @@ Feel free to try it live on http://extend.netlify.com/ (might be out of date).
 <br/>
 
 
+#### Deprecated
 #### Arrays
-An array is a special type of variable that matches a repetitive syntax which is then as an... *ahem* array
+An array is a special type of variable that matches repetitive syntax.
 
 here is an example for a rule that extracts html attributes using one.
 ```javascript
