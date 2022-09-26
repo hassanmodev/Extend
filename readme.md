@@ -5,7 +5,7 @@ Extend is the tool to bring your the syntax you want to the language of your cho
 ## Installation
 To get started you need to install Extend using 
 ```
-npm install -g extendx@0.3.1
+npm install -g extendx
 ```
 Please note we are going to use the name extend<u>x</u> for the cli for now.
 
