@@ -2,7 +2,7 @@
   "name": "extendx",
   "version": "0.3.5",
   "description": "",
-  "main": "basic_typed/watch.js",
+  "main": "build/watch.js",
   "bin": {
     "@squaredev/extendx": "extend",
     "extendx": "extend"
@@ -10,7 +10,7 @@
   "scripts": {
     "t": "tsc basic_typed/watch.ts",
     "typed": "tsc basic_typed/watch.ts",
-    "start": "node basic_typed/watch.js",
+    "start": "node basic_typed/watch.ts",
     "w": "node basic_typed/watch.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
