@@ -82,7 +82,7 @@ const getSettingsFile = fileName => {
     global.settings = { ...global.settings, ...userRules.settings || {} }
     return userRules;
   } catch (MODULE_NOT_FOUND) {
-    console.log("rules file not found, make sure you have a valid _extend.js file at the current directory.");
+    console.log("rules file not found, make sure you have a valid _extend.js file at the current directory, run extendx -h for help");
     process.exit()
   }
 }
