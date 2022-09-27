@@ -103,7 +103,7 @@ console.log(salaries)
 
 
 \`{{ for i:20 {
-  console.log(\"i is: " + i)
+  console.log("i is: " + i)
 } }}\`
 
 console.log(\`last salary is \${\`{{salaries[-1]}}\`}\`)
