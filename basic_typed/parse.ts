@@ -18,7 +18,7 @@ const _parseTemplate = (text: string, parsingRule: boolean): Token[] => {
   let inVar = false;
   let inArr = false;
 
-  for (let i = 0; i < text.length; i++) {
+  for (let i = 0;i < text.length;i++) {
     // console.log(i)
     const letter = text[i];
     let last = array.length ? array[array.length - 1] : array[0];
@@ -119,14 +119,8 @@ const _parseTemplate = (text: string, parsingRule: boolean): Token[] => {
 
   array = array.filter((w) => Object.keys(w).length && w && w.value !== "");
 
-  const ll = (...a) => {
-    // if (!findVars)
-    //   console.log(...a)
-  }
   array.forEach((word, i) => {
-    ll(word)
     if (word.type === "arrayVar") {
-      ll('ind222')
       let obj = {
         type: "arrayVar",
         name: array[i - 1].value,
@@ -135,7 +129,6 @@ const _parseTemplate = (text: string, parsingRule: boolean): Token[] => {
       array[i] = obj;
       array.splice(i - 1, 1);
     } else if (word.type === "var") {
-      ll('xxxx')
       if (!word.value) return;
       word.value = word.value.trim();
       let wordArray = word.value.split(/\s/);
@@ -172,13 +165,13 @@ let defaultPairs = [
 ];
 
 let checkPair = (pairObj, word) => pairObj.array[1] === word;
-let unbalanced = (str, pairs?) => {
+let unbalanced = (str: string, pairs?: typeof defaultPairs) => {
   pairs = pairs || defaultPairs;
   if (!(pairs && pairs.length) || !str) return 0;
   let symbolStack: any[] = [];
   let tildeTemp = { array: ["${", "}"] };
-  for (let i = 0; i < str.length; i++) {
-    for (let j = 0; j < pairs.length; j++) {
+  for (let i = 0;i < str.length;i++) {
+    for (let j = 0;j < pairs.length;j++) {
       let pairObj = pairs[j];
       let pair = pairObj.array;
       let l = pair[0].length;

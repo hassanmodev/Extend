@@ -1,7 +1,7 @@
 // next up better var detection
 // handle deleted files
 import path = require("path");
-import beautify from 'js-beautify'
+const beautify = require('js-beautify')
 var commandLineArgs = require("command-line-args");
 var fs = require("fs");
 var fse = require("fs-extra");
@@ -90,7 +90,7 @@ var getUserRules = (fileName) => {
   var settingsFile = getSettingsFile(fileName)
   // todo reload module: again.. no idea, sometimes it would fail when opening file, need to change how i reload modules.
   let maxAttempets = 15
-  for (let i = 0; i < maxAttempets; i++) {
+  for (let i = 0;i < maxAttempets;i++) {
     if (!Object.keys(settingsFile).length) { settingsFile = getSettingsFile(fileName) }
     else break
   }
@@ -153,7 +153,7 @@ var localCompile = async fileName => {
     return writeToFile(fs.readFileSync(fileName).toString(), writeName);
   }
   try {
-    var sourceCode = fs.readFileSync(fileName).toString();
+    var sourceCode: string = fs.readFileSync(fileName).toString();
   } catch (e) {
     console.log(
       `An error has occured, please make sure file ${fileName} exists.`
@@ -163,7 +163,7 @@ var localCompile = async fileName => {
 
   var value = compileModule.processCode(sourceCode, userRules, getFileName(fileName).slice(1)).text;
   let maxAttempets = 5
-  for (let i = 0; i < maxAttempets && !value; i++) {
+  for (let i = 0;i < maxAttempets && !value;i++) {
     value = compileModule.processCode(sourceCode, userRules).text;
   }
 

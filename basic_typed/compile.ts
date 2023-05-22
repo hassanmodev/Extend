@@ -3,15 +3,20 @@ import settings, { unmatchedTextFunction } from "./settings"
 import { parseCode } from "./parse";
 // todo handle bad rules
 
+type UserRule = {
+  template: string,
+  output: (variables: any) => string | false,
+  parsed: any[]
+}
 var unmatchedText: typeof unmatchedTextFunction = () => ''
 if (settings.showNotMatched) unmatchedText = settings.unmatchedTextFunction
 
-const compileBlock = (sourceCode: string, userRules: any[]) => {
+const compileBlock = (sourceCode: string, userRules: UserRule[]): string | undefined => {
   try {
     let tokenized = parseCode(sourceCode);
     for (const ruleIndex in userRules) {
       let rule = userRules[ruleIndex]
-      let variables = getVariables(rule, tokenized, 0, ruleIndex);
+      let variables = getVariables(rule, tokenized, 0);
       if (!variables) continue;
       let result = rule.output(variables);
       if (result != false) {
@@ -26,11 +31,10 @@ const compileBlock = (sourceCode: string, userRules: any[]) => {
 
 const range = (start: number, end: number) => {
   let array: Number[] = [];
-  for (let i = start; i < end; i++) array.push(i);
+  for (let i = start;i < end;i++) array.push(i);
   return array;
 };
-const processCode = (sourceCode, userRules, fileName = '') => {
-  // IS_ARRAY_CALL && console.log(sourceCode)
+const processCode = (sourceCode: string, userRules: UserRule[], fileName = '') => {
   // extract and process code in place
   const find = (str, needle, i) => str.slice(i, i + needle.length) === needle;
   const codeMarkers = [settings.codeOpening, settings.codeClosing]
@@ -39,7 +43,7 @@ const processCode = (sourceCode, userRules, fileName = '') => {
   var accumulator = "";
   let outputText = "";
 
-  for (let i = 0; i < sourceCode.length; i++) {
+  for (let i = 0;i < sourceCode.length;i++) {
     let letter = sourceCode[i];
     if (ingoreI.includes(i)) continue;
 
@@ -63,8 +67,8 @@ const processCode = (sourceCode, userRules, fileName = '') => {
       return { text: outputText };
     }
 
-    else if (isOpen) accumulator += letter.value;
-    else if (!isOpen) { outputText += letter.value || letter; }
+    else if (isOpen) accumulator += letter;
+    else if (!isOpen) { outputText += letter || letter; }
   }
 
   if (accumulator)
@@ -106,7 +110,7 @@ var isRightKeyword = (found, rule, i) => {
   return found && word && found.value === word.value;
 };
 
-const getVariables = (rule, toknized: Token[], wordAfterArray: any = 0, index = 'unknown') => {
+const getVariables = (rule: UserRule, toknized: Token[], wordAfterArray: any = 0) => {
   // rmv codemarkers
   // vars is the object returned containing all variables extracted
   // adj is a cursor to keep up with different indexes between template and found eg: variables consiting of more than one word
@@ -166,7 +170,7 @@ const getVariables = (rule, toknized: Token[], wordAfterArray: any = 0, index = 
     }
 
     if (toknized.length === 0) break
-    for (var foundIndex = templateRealIndex + template_index_adjust; foundIndex < toknized.length; foundIndex++) {
+    for (var foundIndex = templateRealIndex + template_index_adjust;foundIndex < toknized.length;foundIndex++) {
       var foundWord = toknized[foundIndex];
       let nextTempWord = template[templateIndex + 1]
       let nextFound = toknized[foundIndex + 1]
