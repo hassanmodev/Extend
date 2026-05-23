@@ -1,14 +1,19 @@
-import '../utils/global'
+import '../basic_typed/utils/global'
 import { describe, expect, it, vi } from 'vitest'
-import { handleRules, processCode } from './compile'
-import { parseTemplate } from './parse'
-import type { ExtendSettingsFile } from '../utils/global'
-import type { UserRule, VarsDict } from '../utils/types'
+import { handleRules, processCode } from '../basic_typed/core/compile'
+import { parseTemplate } from '../basic_typed/core/parse'
+import type { ExtendSettingsFile } from '../basic_typed/utils/global'
+import {
+  formatUnmatchedBlockComment,
+  NONE_OF_THE_RULES_MATCHED,
+} from '../basic_typed/utils/settings'
+import type { UserRule, VarsDict } from '../basic_typed/utils/types'
 
 function makeRules(
-  ...rules: Array<{ template: string; output: UserRule['output'] }>
+  ...rules: Array<{ id?: string; template: string; output: UserRule['output'] }>
 ): UserRule[] {
   return rules.map((rule) => ({
+    id: 'test',
     ...rule,
     parsed: parseTemplate(rule.template),
   }))
@@ -29,6 +34,7 @@ describe('handleRules', () => {
     const settingsFile: ExtendSettingsFile = {
       rules: [
         {
+          id: 'test',
           template: '{name}',
           output: (vars) => (vars as VarsDict).name as string,
           parsed: [],
@@ -46,8 +52,8 @@ describe('handleRules', () => {
   it('parses templates for every rule in the file', () => {
     const settingsFile: ExtendSettingsFile = {
       rules: [
-        { template: '{a}', output: () => 'a', parsed: [] },
-        { template: 'foo {b}', output: () => 'b', parsed: [] },
+        { id: 'test-a', template: '{a}', output: () => 'a', parsed: [] },
+        { id: 'test-b', template: 'foo {b}', output: () => 'b', parsed: [] },
       ],
       settings: {} as ExtendSettingsFile['settings'],
       types: {},
@@ -160,7 +166,7 @@ describe('processCode', () => {
     })
 
     expect(processCode('`{{nomatch}}`', rules).text).toBe(
-      '/* none of the rules matched nomatch*/',
+      formatUnmatchedBlockComment('nomatch'),
     )
 
     log.mockRestore()
@@ -174,7 +180,7 @@ describe('processCode', () => {
     })
 
     expect(processCode('`{{unexpected}}`', rules).text).toBe(
-      '/* none of the rules matched unexpected*/',
+      formatUnmatchedBlockComment('unexpected'),
     )
 
     log.mockRestore()
@@ -189,7 +195,9 @@ describe('processCode', () => {
 
     processCode('`{{x}}`', rules, 'file.ts')
 
-    expect(log).toHaveBeenCalledWith('file.ts| none of the rules matched:x')
+    expect(log).toHaveBeenCalledWith(
+      `file.ts| ${NONE_OF_THE_RULES_MATCHED}:x`,
+    )
 
     log.mockRestore()
   })
@@ -209,7 +217,7 @@ describe('processCode', () => {
 
     expect(processCode('`{{42}}`', rules).text).toBe('num:42')
     expect(processCode('`{{abc}}`', rules).text).toBe(
-      '/* none of the rules matched abc*/',
+      formatUnmatchedBlockComment('abc'),
     )
 
     log.mockRestore()
@@ -225,7 +233,7 @@ describe('processCode', () => {
     })
 
     expect(processCode('`{{boom}}`', rules).text).toBe(
-      '/* none of the rules matched boom*/',
+      formatUnmatchedBlockComment('boom'),
     )
     expect(log).toHaveBeenCalled()
 
@@ -272,9 +280,7 @@ describe('processCode', () => {
       output: (vars) => (vars as VarsDict).x as string,
     })
 
-    expect(processCode('`{{}}`', rules).text).toBe(
-      '/* none of the rules matched */',
-    )
+    expect(processCode('`{{}}`', rules).text).toBe(formatUnmatchedBlockComment(''))
 
     log.mockRestore()
   })
@@ -296,7 +302,7 @@ describe('processCode', () => {
     })
 
     expect(processCode('`{{only}}`', rules).text).toBe(
-      '/* none of the rules matched only*/',
+      formatUnmatchedBlockComment('only'),
     )
 
     log.mockRestore()
@@ -310,7 +316,7 @@ describe('processCode', () => {
     })
 
     expect(processCode('`{{foo baz}}`', rules).text).toBe(
-      '/* none of the rules matched foo baz*/',
+      formatUnmatchedBlockComment('foo baz'),
     )
 
     log.mockRestore()

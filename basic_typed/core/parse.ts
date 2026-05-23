@@ -7,8 +7,12 @@ export type Token = {
   rest?: any,
 }
 export type TokenInited = Required<Token> & { rest?: any }
+
+/** Identifier chars — must stay aligned with rule `ident` types (e.g. `$foo`, `unwrap_or`). */
+const isWordChar = (c: string) => /[a-zA-Z0-9_$]/.test(c)
+const isSymbolChar = (c: string) => !/\s/.test(c) && !isWordChar(c)
+
 const _parseTemplate = (text: string, parsingRule: boolean): Token[] => {
-  var symbolsArray = "'\"\\/,`!@#$%^&*+-;:?><=[]{}().".split("");
   let terminals = [settings.variableOpening, settings.variableClosing];
   let arrTerminals = [settings.arrayOpening, settings.arrayClosing];
   let escapeChar = settings.escapeCharacter;
@@ -27,7 +31,7 @@ const _parseTemplate = (text: string, parsingRule: boolean): Token[] => {
     if (skipIndex.includes(i)) {
       last.value = (last.value || "") + letter;
       last.str = (last.str || "") + letter;
-      if (symbolsArray.includes(letter)) {
+      if (isSymbolChar(letter)) {
         last.type = 'symbol'
       }
       continue;
@@ -79,7 +83,7 @@ const _parseTemplate = (text: string, parsingRule: boolean): Token[] => {
       }
     }
 
-    if (symbolsArray.includes(letter)) {
+    if (isSymbolChar(letter)) {
       array.push({
         value: letter,
         type: "symbol",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseCode, parseTemplate, unbalanced } from './parse'
+import { parseCode, parseTemplate, unbalanced } from '../basic_typed/core/parse'
 
 describe('unbalanced', () => {
   it('returns 0 for empty or missing input', () => {
@@ -74,6 +74,23 @@ describe('parseTemplate', () => {
       { value: ']', type: 'symbol', str: ']' },
     ])
   })
+
+  it('treats ## as a literal hash in rule templates', () => {
+    expect(parseTemplate('propagate##({expr})').map((t) => t.value)).toEqual([
+      'propagate#',
+      '(',
+      'expr',
+      ')',
+    ])
+  })
+
+  it('merges an escaped open paren into the preceding word token', () => {
+    expect(parseTemplate('propagate#({expr}#)').map((t) => t.value)).toEqual([
+      'propagate(',
+      'expr',
+      ')',
+    ])
+  })
 })
 
 describe('parseCode', () => {
@@ -90,6 +107,37 @@ describe('parseCode', () => {
     expect(parseCode('#{literal}')).toEqual([
       { value: '{literal', str: '{literal', type: 'word' },
       { value: '}', type: 'symbol', str: '}' },
+    ])
+  })
+
+  it('tokenizes pipe delimiters even when adjacent to identifiers', () => {
+    expect(parseCode('for (tags) |tag|{')).toEqual([
+      { value: 'for', str: 'for ', type: 'word' },
+      { value: '(', type: 'symbol', str: '(' },
+      { value: 'tags', str: 'tags', type: 'word' },
+      { value: ')', type: 'symbol', str: ') ' },
+      { value: '|', type: 'symbol', str: '|' },
+      { value: 'tag', str: 'tag', type: 'word' },
+      { value: '|', type: 'symbol', str: '|' },
+      { value: '{', type: 'symbol', str: '{' },
+    ])
+  })
+
+  it('tokenizes spaced pipe delimiters the same as tight pipes', () => {
+    expect(parseCode('catch | e | recovered').map((t) => t.value)).toEqual(
+      parseCode('catch |e| recovered').map((t) => t.value),
+    )
+  })
+
+  it('splits any non-identifier punctuation as symbols without a manual list', () => {
+    expect(parseCode('a~b%c&d').map((t) => t.value)).toEqual([
+      'a',
+      '~',
+      'b',
+      '%',
+      'c',
+      '&',
+      'd',
     ])
   })
 })

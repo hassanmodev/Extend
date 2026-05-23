@@ -146,7 +146,7 @@ export const getVariables = (
   var templateRealIndex = 0;
   var breakWhile = false;
   var breakFor = 0;
-
+  let consumedThrough = -1;
 
   while (true) {
     if (templateIndex === template.length) {
@@ -186,11 +186,13 @@ export const getVariables = (
         for (let j = startIdx; j < toknized.length; j++) {
           if (isArrayEndAt(toknized, j, endSuffix, startIdx)) {
             template_index_adjust = j - templateRealIndex
+            consumedThrough = j + endSuffix.length - 1
             break
           }
         }
       } else {
         template_index_adjust = toknized.length - templateRealIndex - 1
+        consumedThrough = toknized.length - 1
       }
 
       templateIndex++
@@ -234,6 +236,7 @@ export const getVariables = (
 
       if (templateWord.type !== "var" && isRightKeyword(foundWord, rule, templateIndex)) {
         if (!breakFor && !breakWhile) {
+          consumedThrough = foundIndex
           break
         }
       }
@@ -244,18 +247,24 @@ export const getVariables = (
         if (!unbalanced(lastFoundVarsDict || '')) {
           if (!breakFor && !breakWhile) {
             skipI = true;
+            consumedThrough = foundIndex - 1
             break
           }
         }
       }
+      if (templateWord.type !== "var") return false
       template_index_adjust++;
       if (endAfterArray.length) {
         if (insertArrayBlock) { varsDictArray.push({}); insertArrayBlock = false }
         if (templateWord.type === 'var') {
           addVariable(foundWord, templateWord, varsDictArray[varsDictArray.length - 1])
+          consumedThrough = foundIndex
         }
       }
-      if (inVar) addVariable(foundWord, templateWord, vars)
+      if (inVar) {
+        addVariable(foundWord, templateWord, vars)
+        consumedThrough = foundIndex
+      }
       if (breakFor) { breakFor = 0; break; }
     }
 
@@ -285,6 +294,12 @@ export const getVariables = (
     }
   } else {
     if (!literalsSatisfied(rule, toknized)) return false;
+    if (
+      toknized.length > 0 &&
+      consumedThrough !== toknized.length - 1
+    ) {
+      return false;
+    }
     if (!variableMatchRule(tempVars, vars)) return false;
     if (!arrayVarsSatisfied(rule, vars)) return false;
   }

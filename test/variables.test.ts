@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import '../utils/global'
-import { parseTemplate, parseCode } from './parse'
-import { getVariables } from './variables'
-import type { UserRule, VarsDict } from '../utils/types'
+import '../basic_typed/utils/global'
+import { parseTemplate, parseCode, Token } from '../basic_typed/core/parse'
+import { getVariables } from '../basic_typed/core/variables'
+import type { UserRule, VarsDict } from '../basic_typed/utils/types'
 
 function makeRule(template: string): UserRule {
   const parsed = parseTemplate(template)
-  return { template, output: () => 'x', parsed }
+  return { id: 'test', template, output: () => 'x', parsed }
 }
 
 describe('getVariables array', () => {
@@ -14,7 +14,7 @@ describe('getVariables array', () => {
     const rule = makeRule('<{tag} {attrs}[{name}="{val}"]/>')
     const tok = parseCode('<input id="a" class="b" />')
 
-    expect(getVariables(rule, tok, 0)).toEqual({
+    expect(getVariables(rule, tok, [] as Token[])).toEqual({
       tag: 'input ',
       attrs: [
         { name: 'id', val: 'a' },
@@ -27,7 +27,7 @@ describe('getVariables array', () => {
     const rule = makeRule('<{tag} {attrs}[{name}="{val}"]/>')
     const tok = parseCode('<div title="hello" />')
 
-    const vars = getVariables(rule, tok, 0) as VarsDict
+    const vars = getVariables(rule, tok, [] as Token[]) as VarsDict
     expect(vars.tag).toBe('div ')
     expect(vars.attrs).toEqual([{ name: 'title', val: 'hello' }])
   })
@@ -36,14 +36,14 @@ describe('getVariables array', () => {
     const rule = makeRule('<{tag} {attrs}[{name}="{val}"]/>')
     const tok = parseCode('<input id="a"')
 
-    expect(getVariables(rule, tok, 0)).toBe(false)
+    expect(getVariables(rule, tok, [] as Token[])).toBe(false)
   })
 
   it('extracts multiple attrs when values contain slashes', () => {
     const rule = makeRule('<{tag} {attrs}[{name}="{val}"]/>')
     const tok = parseCode('<a href="/x" target="_blank" rel="noopener" />')
 
-    expect(getVariables(rule, tok, 0)).toEqual({
+    expect(getVariables(rule, tok, [] as Token[])).toEqual({
       tag: 'a ',
       attrs: [
         { name: 'href', val: '/x' },
@@ -57,7 +57,7 @@ describe('getVariables array', () => {
     const rule = makeRule('<{tag} {attrs}[{name}="{val}"]/>')
     const tok = parseCode('<a data="foo/>bar" />')
 
-    expect(getVariables(rule, tok, 0)).toEqual({
+    expect(getVariables(rule, tok, [] as Token[])).toEqual({
       tag: 'a ',
       attrs: [{ name: 'data', val: 'foo/>bar' }],
     })

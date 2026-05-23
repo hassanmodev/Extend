@@ -101,5 +101,5 @@
     "skipLibCheck": true,                                /* Skip type checking all .d.ts files. */
     "types": ["node"]
   },
-  "include": ["basic_typed/**/*.ts"]
+  "include": ["basic_typed/**/*.ts", "test/utils.test.ts"]
 }

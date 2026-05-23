@@ -56,7 +56,7 @@ var settings = defaultSettings
 global.settings = settings
 
 var userSettings = defaultSettings
-var compileModule = require("./compile");
+var compileModule = require("./core/compile");
 try {
   var cliOptions = commandLineArgs(optionDefinitions);
 } catch (error) {

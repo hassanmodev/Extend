@@ -8,6 +8,7 @@ export type TemplateToken = Token & {
 export type VarsDict = { [key: string]: string | VarsDict[] }
 
 export type UserRule = {
+  id: string,
   template: string,
   output: (variables: VarsDict | VarsDict[]) => string | false,
   parsed: TemplateToken[]

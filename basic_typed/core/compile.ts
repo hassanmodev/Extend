@@ -14,7 +14,7 @@ const compileBlock = (sourceCode: string, userRules: UserRule[]): string | undef
     let tokenized = parseCode(sourceCode);
     for (const ruleIndex in userRules) {
       let rule = userRules[ruleIndex]
-      let variables = getVariables(rule, tokenized, 0);
+      let variables = getVariables(rule, tokenized);
       if (!variables) continue;
       let result = rule.output(variables);
       if (result !== false) {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { range, startsWithAt } from './utils'
-import { unmatchedTextFunction } from './settings'
+import { range, startsWithAt } from '../basic_typed/utils/utils'
+import { formatUnmatchedBlockComment, unmatchedTextFunction } from '../basic_typed/utils/settings'
 
 describe('range', () => {
   it('returns consecutive numbers from start (inclusive) to end (exclusive)', () => {
@@ -28,11 +28,9 @@ describe('unmatchedTextFunction', () => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => {})
     const block = 'some code'
 
-    expect(unmatchedTextFunction(block)).toBe(
-      '/* none of the rules matched some code*/',
-    )
+    expect(unmatchedTextFunction(block)).toBe(formatUnmatchedBlockComment(block))
     expect(unmatchedTextFunction(block, 'file.ts')).toBe(
-      '/* none of the rules matched some code*/',
+      formatUnmatchedBlockComment(block),
     )
 
     log.mockRestore()
