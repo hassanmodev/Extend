@@ -5,7 +5,7 @@ export type TemplateToken = Token & {
   array?: Token[]
 }
 
-export type VarsDict = { [key: string]: string }
+export type VarsDict = { [key: string]: string | VarsDict[] }
 
 export type UserRule = {
   template: string,

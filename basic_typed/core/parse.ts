@@ -39,16 +39,14 @@ const _parseTemplate = (text: string, parsingRule: boolean): Token[] => {
     // findvars is for parsing templates..
     if (parsingRule) {
       if (arrTerminals[0] === letter) {
-        console.error(`Array variables are disabled: {arrayname}[...], please remove this rule: \n"${text.substring(0, 40)}"`)
-        process.exit()
-        // inArr = true;
-        // inVar = true;
-        // array.push({ value: "", type: "arrayVar" });
-        // continue;
+        inArr = true;
+        inVar = true;
+        array.push({ value: "", type: "arrayVar" });
+        continue;
       }
       else if (arrTerminals[1] === letter) {
         inArr = false;
-        inVar = true;
+        inVar = false;
         array.push({ type: "word", value: "" });
         continue;
       }

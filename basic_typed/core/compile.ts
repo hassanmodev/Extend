@@ -17,7 +17,7 @@ const compileBlock = (sourceCode: string, userRules: UserRule[]): string | undef
       let variables = getVariables(rule, tokenized, 0);
       if (!variables) continue;
       let result = rule.output(variables);
-      if (result != false) {
+      if (result !== false) {
         if (settings.showMatchedRules) console.log(`block ( ${sourceCode.slice(0, 10)} ): matched ${rule.template}`);
         return result;
       }
@@ -27,7 +27,12 @@ const compileBlock = (sourceCode: string, userRules: UserRule[]): string | undef
   }
 };
 
-const processCode = (sourceCode: string, userRules: UserRule[], fileName = '') => {
+const processCode = (
+  sourceCode: string,
+  userRules: UserRule[],
+  fileName = '',
+  insideBlock = false,
+): { text: string; consumed: number } => {
   const codeMarkers = [settings.codeOpening, settings.codeClosing]
   var ingoreI: number[] = [];
   var isOpen = false;
@@ -41,19 +46,21 @@ const processCode = (sourceCode: string, userRules: UserRule[], fileName = '') =
     let foundOpenCode = startsWithAt(sourceCode, codeMarkers[0], i);
     let foundCloseCode = startsWithAt(sourceCode, codeMarkers[1], i);
     if (foundOpenCode) {
-      var res = processCode(
+      const inner = processCode(
         sourceCode.slice(i + codeMarkers[0].length),
         userRules,
-      ).text;
-      if (res) {
-        outputText += compileBlock(res, userRules) || unmatchedText(res, fileName);
-        ingoreI.push(...range(i, i + res.length + 2 * codeMarkers[1].length));
-      }
+        fileName,
+        true,
+      );
+      const res = inner.text;
+      const compiled = compileBlock(res, userRules);
+      outputText += compiled !== undefined ? compiled : unmatchedText(res, fileName);
+      ingoreI.push(...range(i, i + codeMarkers[0].length + inner.consumed));
     }
-    else if (foundCloseCode) {
+    else if (insideBlock && foundCloseCode) {
       ingoreI.push(...range(i, i + codeMarkers[1].length));
       if (accumulator) { outputText += compileBlock(accumulator, userRules); }
-      return { text: outputText };
+      return { text: outputText, consumed: i + codeMarkers[1].length };
     }
 
     else if (isOpen) accumulator += letter;
@@ -63,7 +70,7 @@ const processCode = (sourceCode: string, userRules: UserRule[], fileName = '') =
   if (accumulator)
     outputText += compileBlock(accumulator, userRules);
 
-  return { text: outputText };
+  return { text: outputText, consumed: sourceCode.length };
 };
 
 
@@ -81,5 +88,5 @@ let handleRules = (tesingFull: ExtendSettingsFile) => {
 
 exports.handleRules = handleRules;
 
-export { processCode };
+export { processCode, handleRules };
 export type { UserRule } from "../utils/types";
