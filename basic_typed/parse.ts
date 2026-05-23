@@ -6,6 +6,7 @@ export type Token = {
   type?: string,
   rest?: any,
 }
+export type TokenInited = Required<Token> & { rest?: any }
 const _parseTemplate = (text: string, parsingRule: boolean): Token[] => {
   var symbolsArray = "'\"\\/,`!@#$%^&*+-;:?><=[]{}().".split("");
   let terminals = [settings.variableOpening, settings.variableClosing];
@@ -18,7 +19,7 @@ const _parseTemplate = (text: string, parsingRule: boolean): Token[] => {
   let inVar = false;
   let inArr = false;
 
-  for (let i = 0;i < text.length;i++) {
+  for (let i = 0; i < text.length; i++) {
     // console.log(i)
     const letter = text[i];
     let last = array.length ? array[array.length - 1] : array[0];
@@ -119,24 +120,24 @@ const _parseTemplate = (text: string, parsingRule: boolean): Token[] => {
 
   array = array.filter((w) => Object.keys(w).length && w && w.value !== "");
 
-  array.forEach((word, i) => {
-    if (word.type === "arrayVar") {
+  array.forEach((token, i) => {
+    if (token.type === "arrayVar") {
       let obj = {
         type: "arrayVar",
         name: array[i - 1].value,
-        array: parseTemplate(word.str),
+        array: parseTemplate(token.str!),
       };
       array[i] = obj;
       array.splice(i - 1, 1);
-    } else if (word.type === "var") {
-      if (!word.value) return;
-      word.value = word.value.trim();
-      let wordArray = word.value.split(/\s/);
+    } else if (token.type === "var") {
+      if (!token.value) return;
+      token.value = token.value.trim();
+      let wordArray = token.value.split(/\s/);
       if (!parsingRule)
-        console.log(word, wordArray, parsingRule)
+        console.log(token, wordArray, parsingRule)
       if (wordArray.length > 1) {
-        word.rest = wordArray.slice(0, -1);
-        word.value = wordArray[wordArray.length - 1];
+        token.rest = wordArray.slice(0, -1);
+        token.value = wordArray[wordArray.length - 1];
       }
     }
   });
@@ -164,14 +165,18 @@ let defaultPairs = [
   { array: ["/*", "*/"], ignore: 1 },
 ];
 
-let checkPair = (pairObj, word) => pairObj.array[1] === word;
+let checkPair = (
+  pairObj: { array: string[]; ignore?: boolean | undefined | number },
+  needle: string
+) => pairObj.array[1] === needle;
+
 let unbalanced = (str: string, pairs?: typeof defaultPairs) => {
   pairs = pairs || defaultPairs;
   if (!(pairs && pairs.length) || !str) return 0;
   let symbolStack: any[] = [];
   let tildeTemp = { array: ["${", "}"] };
-  for (let i = 0;i < str.length;i++) {
-    for (let j = 0;j < pairs.length;j++) {
+  for (let i = 0; i < str.length; i++) {
+    for (let j = 0; j < pairs.length; j++) {
       let pairObj = pairs[j];
       let pair = pairObj.array;
       let l = pair[0].length;
@@ -194,8 +199,8 @@ let unbalanced = (str: string, pairs?: typeof defaultPairs) => {
   return symbolStack.length;
 };
 // const parseTemplate = (str) => _parseTemplate(str, true);
-const parseCode = (str) => _parseTemplate(str, false)
-const parseTemplate = (str) => _parseTemplate(str, true)
+const parseCode = (str: string) => _parseTemplate(str, false)
+const parseTemplate = (str: string) => _parseTemplate(str, true)
 export {
   parseCode,
   parseTemplate,

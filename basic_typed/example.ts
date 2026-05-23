@@ -1,5 +1,5 @@
 const path = require("path");
-exports.text = [
+export const text = [
   {
     file: "_extend.js",
     text:

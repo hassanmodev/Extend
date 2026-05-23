@@ -1,3 +1,6 @@
+import { UserRule } from "./compile";
+import "./global"
+import { Token } from "./parse";
 const fs = require("fs");
 const decomment = require("decomment");
 
@@ -29,7 +32,7 @@ var readSettings = () => {
   return settings;
 };
 
-var writeSettings = (settings) => {
+var writeSettings = (settings: Record<string, unknown>) => {
   const text = JSON.stringify(settings, null, 1);
   if (text === lastSettings) return false
   lastSettings = text;
@@ -39,37 +42,37 @@ var writeSettings = (settings) => {
   fs.writeFileSync("./.vscode/settings.json", text);
 };
 
-var escapeRegex = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+var escapeRegex = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-let anyButWordBAD = (word) => `([\\s\\S]+?(?=${word}))`;
-let anyButWord = (word) => `((?:(?!${word})[\\s\\S])*)`;
-var createRegex = (words, terminals = ["`{{", "}}`"]) => {
+let anyButWordBAD = (word: string) => `([\\s\\S]+?(?=${word}))`;
+let anyButWord = (word: string) => `((?:(?!${word})[\\s\\S])*)`;
+var createRegex = (words: Token[], terminals = ["`{{", "}}`"]) => {
   let text = "";
   terminals = [escapeRegex(terminals[0]), escapeRegex(terminals[1])];
 
   let groups: any[] = [];
   let r = "";
-  let group = (string) => r + "(" + string + ")" + r;
+  let group = (string: string) => r + "(" + string + ")" + r;
 
   text += group(terminals[0]);
   //569CD6',
 
   groups.push(colors["terminals"]);
 
-  const nextStaticString = (words) => {
+  const nextStaticString = (words: Token[]) => {
     words.push({ type: "word", value: group(escapeRegex(terminals[1])) });
-    return words.reduce((prev, curr) => {
+    return words.reduce((prev: string, curr: Token) => {
       if (curr.type !== "word") return prev;
       return `${prev ? prev + "|" : ""}${curr.value}`;
     }, "");
   };
 
-  var nextWord = (words, i) => words.slice(i).find(w => w.type === 'word' || w.type === 'symbol')
+  var nextWord = (words: Token[], i: number) => words.slice(i).find(w => w.type === 'word' || w.type === 'symbol')
 
   words.forEach((word, i) => {
     if (word.type === "word" || word.type === "symbol") {
-      text += group("[\\s]*" + escapeRegex(word.value) + "[\\s]*");
-      groups.push(colors[word.type] || colors["default"]);
+      text += group("[\\s]*" + escapeRegex(word.value ?? "") + "[\\s]*");
+      groups.push(colors[word.type as keyof typeof colors] || colors["default"]);
     } else {
       let next = nextWord(words, i)
       if (!next || !next.value) return ''
@@ -79,7 +82,7 @@ var createRegex = (words, terminals = ["`{{", "}}`"]) => {
       // console.log(anyButWord(ored), escaped)
 
       text += `${(anyButWord(ored) || anyButWord(terminals[1]))}`;
-      groups.push(colors[word.type] || colors["default"]);
+      groups.push(colors[(word.type ?? '') as keyof typeof colors] || colors["default"]);
     }
   });
 
@@ -89,7 +92,7 @@ var createRegex = (words, terminals = ["`{{", "}}`"]) => {
   return { [text]: groups };
 };
 
-let clearSettings = (settings) => {
+let clearSettings = (settings: Record<string, unknown>) => {
   for (let key in settings)
     if (key.slice(0, 10) === 'highlight.')
       delete settings[key]
@@ -97,7 +100,7 @@ let clearSettings = (settings) => {
   writeSettings(settings)
 }
 
-var start = (userRules, terminals) => {
+var start = (userRules: UserRule[], terminals: string[]) => {
   var settings = readSettings();
   if (!settings) return false;
   if (!global.settings.vscodeHighlighting) return clearSettings(settings)

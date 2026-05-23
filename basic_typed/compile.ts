@@ -1,12 +1,20 @@
 import { parseTemplate, Token, unbalanced } from "./parse";
 import settings, { unmatchedTextFunction } from "./settings"
 import { parseCode } from "./parse";
+import { SettingsFile } from "./watch";
 // todo handle bad rules
 
-type UserRule = {
+type TemplateToken = Token & {
+  name?: string
+  array?: Token[]
+}
+
+type VarsDict = { [key: string]: string }
+
+export type UserRule = {
   template: string,
-  output: (variables: any) => string | false,
-  parsed: any[]
+  output: (variables: VarsDict | VarsDict[]) => string | false,
+  parsed: TemplateToken[]
 }
 var unmatchedText: typeof unmatchedTextFunction = () => ''
 if (settings.showNotMatched) unmatchedText = settings.unmatchedTextFunction
@@ -31,19 +39,19 @@ const compileBlock = (sourceCode: string, userRules: UserRule[]): string | undef
 
 const range = (start: number, end: number) => {
   let array: Number[] = [];
-  for (let i = start;i < end;i++) array.push(i);
+  for (let i = start; i < end; i++) array.push(i);
   return array;
 };
 const processCode = (sourceCode: string, userRules: UserRule[], fileName = '') => {
   // extract and process code in place
-  const find = (str, needle, i) => str.slice(i, i + needle.length) === needle;
+  const find = (str: string, needle: string, i: number) => str.slice(i, i + needle.length) === needle;
   const codeMarkers = [settings.codeOpening, settings.codeClosing]
   var ingoreI: Number[] = [];
   var isOpen = false;
   var accumulator = "";
   let outputText = "";
 
-  for (let i = 0;i < sourceCode.length;i++) {
+  for (let i = 0; i < sourceCode.length; i++) {
     let letter = sourceCode[i];
     if (ingoreI.includes(i)) continue;
 
@@ -78,45 +86,32 @@ const processCode = (sourceCode: string, userRules: UserRule[], fileName = '') =
 };
 
 
-let handleRules = (tesingFull) => {
+let handleRules = (tesingFull: SettingsFile) => {
   let userRules = tesingFull.rules
   if (!userRules || !Array.isArray(userRules) || !userRules.length) {
     console.log('An error has occured, cant get rules', userRules, tesingFull)
     process.exit()
   }
-  for (const rule of userRules) {
+  for (const rule of userRules)
     rule.parsed = parseTemplate(rule.template);
-    rule.enum = rule.parsed.map((word) => {
-      if (word.type === "word") {
-        if (!rule.config) return word;
-        return rule.config.words
-          ? rule.config.words.map((w) => w.enum)[0]
-          : word;
-      }
-      return [];
-    });
-    // .filter(w => w)
-  }
+
   return userRules;
 };
 
-var isRightKeyword = (found, rule, i) => {
+var isRightKeyword = (found: Token, rule: UserRule, i: number) => {
   let template = rule.parsed;
   let word = template[i];
   if (!word) return false
-  if (rule.config && rule.enum && rule.enum[i]) {
-    return rule.enum[i].includes(found.value) || found.value === word.value;
-  }
   return found && word && found.value === word.value;
 };
 
-const getVariables = (rule: UserRule, toknized: Token[], wordAfterArray: any = 0) => {
+const getVariables = (rule: UserRule, toknized: Token[], wordAfterArray: Token | 0 = 0): VarsDict | VarsDict[] | false => {
   // rmv codemarkers
   // vars is the object returned containing all variables extracted
   // adj is a cursor to keep up with different indexes between template and found eg: variables consiting of more than one word
   var template = rule.parsed;
-  var vars = {};
-  var arrayVars = [{}];
+  let vars: VarsDict = {};
+  var varsDictArray = new Array<VarsDict>();
   var insertArrayBlock = false;
   var inVar = false;
   var template_index_adjust = 0;
@@ -170,14 +165,14 @@ const getVariables = (rule: UserRule, toknized: Token[], wordAfterArray: any = 0
     }
 
     if (toknized.length === 0) break
-    for (var foundIndex = templateRealIndex + template_index_adjust;foundIndex < toknized.length;foundIndex++) {
+    for (var foundIndex = templateRealIndex + template_index_adjust; foundIndex < toknized.length; foundIndex++) {
       var foundWord = toknized[foundIndex];
       let nextTempWord = template[templateIndex + 1]
       let nextFound = toknized[foundIndex + 1]
 
 
       if (nextTempWord)
-        if (nextTempWord.type === 'arrayVar' && nextFound && (nextFound.value === nextTempWord.array[0].value)) {
+        if (nextTempWord.type === 'arrayVar' && nextTempWord.array?.[0] && nextFound && (nextFound.value === nextTempWord.array[0].value)) {
           breakFor = 1
         }
 
@@ -197,9 +192,9 @@ const getVariables = (rule: UserRule, toknized: Token[], wordAfterArray: any = 0
       // am i looking at the next word in template?
       // todo check if variable allows for unbalanced parentheses. 
       if (isRightKeyword(foundWord, rule, templateIndex + 1)) {
-        let lastFoundVar = vars[templateWord.value]
+        let lastFoundVarsDict = templateWord.value ? vars[templateWord.value] : undefined
         // is the current state of variable balanced?
-        if (!unbalanced(lastFoundVar)) {
+        if (!unbalanced(lastFoundVarsDict || '')) {
           if (!breakFor && !breakWhile) {
             skipI = true;
             break
@@ -209,8 +204,8 @@ const getVariables = (rule: UserRule, toknized: Token[], wordAfterArray: any = 0
       template_index_adjust++;
       // #todo did i diable this?
       if (wordAfterArray) {
-        if (insertArrayBlock) { arrayVars.push({}); insertArrayBlock = false }
-        addVariable(foundWord, templateWord, arrayVars[arrayVars.length - 1])
+        if (insertArrayBlock) { varsDictArray.push({}); insertArrayBlock = false }
+        addVariable(foundWord, templateWord, varsDictArray[varsDictArray.length - 1])
       }
       if (inVar) addVariable(foundWord, templateWord, vars)
       if (breakFor) { breakFor = 0; break; }
@@ -220,35 +215,44 @@ const getVariables = (rule: UserRule, toknized: Token[], wordAfterArray: any = 0
     if (breakWhile) { breakWhile = false; break; }
   }
 
-  var tempVars = rule.parsed.filter((k) => ["var", 'arrayVar'].includes(k.type));
+  var tempVars = rule.parsed.filter((k): k is TemplateToken & { type: 'var' | 'arrayVar' } =>
+    k.type === "var" || k.type === 'arrayVar'
+  );
 
   // if is arraycall && any element is missing on any block remove block
   // else if any var is missing / or is array with 0 length then you are looking at the wrong rule.. return false
   if (wordAfterArray) {
-    for (var arrayIndex in arrayVars) {
-      var vars = arrayVars[arrayIndex]
-      if (!variableMatchRule(tempVars, vars)) arrayVars.splice(+arrayIndex, 1)
+    for (let arrayIndex = 0; arrayIndex < varsDictArray.length; arrayIndex++) {
+      vars = varsDictArray[arrayIndex]
+      if (!variableMatchRule(tempVars, vars)) varsDictArray.splice(+arrayIndex, 1)
     }
   } else {
     if (!variableMatchRule(tempVars, vars)) return false;
   }
 
 
-  if (wordAfterArray) return arrayVars
+  if (wordAfterArray) return varsDictArray
   return vars;
 };
 
-var addVariable = (foundWord, templateWord, foundVariables) => {
+var addVariable = (
+  foundWord: Token,
+  templateWord: Token,
+  foundVariables: VarsDict
+) => {
+  if (!templateWord.value) return
   foundVariables[templateWord.value] = foundVariables[templateWord.value] || "";
-  foundVariables[templateWord.value] += foundWord.str || foundWord.value
+  foundVariables[templateWord.value] += foundWord.str || foundWord.value || ""
 }
 exports.handleRules = handleRules;
 
-var variableMatchRule = (variables, foundVariables) => {
+var variableMatchRule = (variables: TemplateToken[], foundVariables: VarsDict) => {
   for (var variable of variables) {
-    var extractedValue = foundVariables[variable.value || variable.name];
+    const key = variable.value || variable.name
+    if (!key) return false
+    var extractedValue = foundVariables[key];
     if (!extractedValue || (Array.isArray(extractedValue) && !extractedValue.length)) {
-      settings.showNotFound && console.log(variable.value || variable.name, 'not found in', foundVariables)
+      settings.showNotFound && console.log(key, 'not found in', foundVariables)
       return false;
     }
     if (!variable.rest) continue
@@ -271,7 +275,7 @@ var variableMatchRule = (variables, foundVariables) => {
           console.log(extractedValue, 'didn\'t match type', type)
           return false
         }
-        foundVariables[variable.value || variable.name] = returned
+        foundVariables[key] = String(returned)
       }
     }
   }

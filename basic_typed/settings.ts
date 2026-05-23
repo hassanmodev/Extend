@@ -1,4 +1,4 @@
-export const unmatchedTextFunction = (block, file = '') => {
+export const unmatchedTextFunction = (block: string, file: string = '') => {
   if (file) file += '|'
   console.log(`${file} none of the rules matched:${block.slice(0, 8)}`)
   return `/* none of the rules matched ${block}*/`
