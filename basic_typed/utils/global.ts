@@ -22,7 +22,6 @@ export type ExtendSettingsFile = {
 }
 
 declare global {
-  var msg: (...msgs: unknown[]) => void
   var settings: ExtendSettings
   var settingsFile: ExtendSettingsFile
 }
