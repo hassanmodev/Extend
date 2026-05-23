@@ -94,10 +94,50 @@ const arrayVarsSatisfied = (rule: UserRule, foundVariables: VarsDict) => {
   return true
 }
 
-export const getVariables = (rule: UserRule, toknized: Token[], wordAfterArray: Token | 0 = 0): VarsDict | VarsDict[] | false => {
+const tokensToStr = (tokens: Token[], from: number, to: number) => {
+  let s = ''
+  for (let i = from; i < to; i++) {
+    s += tokens[i].str ?? tokens[i].value ?? ''
+  }
+  return s
+}
+
+const collectEndSuffix = (template: TemplateToken[], fromIndex: number) => {
+  const suffix: Token[] = []
+  for (let k = fromIndex; k < template.length; k++) {
+    const t = template[k]
+    if (t.type === 'var' || t.type === 'arrayVar') break
+    suffix.push(t)
+  }
+  return suffix
+}
+
+const suffixMatches = (tokens: Token[], index: number, suffix: Token[]) => {
+  if (!suffix.length) return false
+  for (let i = 0; i < suffix.length; i++) {
+    if (tokens[index + i]?.value !== suffix[i].value) return false
+  }
+  return true
+}
+
+const isArrayEndAt = (
+  tokens: Token[],
+  index: number,
+  endSuffix: Token[],
+  prefixFrom = 0,
+) => {
+  if (!suffixMatches(tokens, index, endSuffix)) return false
+  return unbalanced(tokensToStr(tokens, prefixFrom, index)) === 0
+}
+
+export const getVariables = (
+  rule: UserRule,
+  toknized: Token[],
+  endAfterArray: Token[] = [],
+): VarsDict | VarsDict[] | false => {
   var template = rule.parsed;
   let vars: VarsDict = {};
-  var varsDictArray: VarsDict[] = wordAfterArray ? [{}] : [];
+  var varsDictArray: VarsDict[] = endAfterArray.length ? [{}] : [];
   var insertArrayBlock = false;
   var inVar = false;
   var template_index_adjust = 0;
@@ -110,7 +150,7 @@ export const getVariables = (rule: UserRule, toknized: Token[], wordAfterArray: 
 
   while (true) {
     if (templateIndex === template.length) {
-      if (wordAfterArray) {
+      if (endAfterArray.length) {
         templateIndex = 0
         insertArrayBlock = true
       } else {
@@ -129,11 +169,11 @@ export const getVariables = (rule: UserRule, toknized: Token[], wordAfterArray: 
 
     if (templateWord.type === 'arrayVar') {
       const startIdx = templateRealIndex + template_index_adjust
-      const endToken = template[templateIndex + 1]
+      const endSuffix = collectEndSuffix(template, templateIndex + 1)
       const arrayResult = getVariables(
         { ...rule, parsed: templateWord.array! },
         toknized.slice(startIdx),
-        endToken || 0,
+        endSuffix,
       )
 
       if (arrayResult === false || !Array.isArray(arrayResult) || !arrayResult.length) {
@@ -142,9 +182,9 @@ export const getVariables = (rule: UserRule, toknized: Token[], wordAfterArray: 
 
       vars[templateWord.name!] = arrayResult
 
-      if (endToken) {
+      if (endSuffix.length) {
         for (let j = startIdx; j < toknized.length; j++) {
-          if (toknized[j].value === endToken.value) {
+          if (isArrayEndAt(toknized, j, endSuffix, startIdx)) {
             template_index_adjust = j - templateRealIndex
             break
           }
@@ -184,9 +224,13 @@ export const getVariables = (rule: UserRule, toknized: Token[], wordAfterArray: 
         }
       }
 
-      if (wordAfterArray)
-        if (nextTempWord && wordAfterArray.value === foundWord.value) breakWhile = true
-
+      if (
+        endAfterArray.length &&
+        isArrayEndAt(toknized, foundIndex, endAfterArray)
+      ) {
+        breakWhile = true
+        break
+      }
 
       if (templateWord.type !== "var" && isRightKeyword(foundWord, rule, templateIndex)) {
         if (!breakFor && !breakWhile) {
@@ -205,7 +249,7 @@ export const getVariables = (rule: UserRule, toknized: Token[], wordAfterArray: 
         }
       }
       template_index_adjust++;
-      if (wordAfterArray) {
+      if (endAfterArray.length) {
         if (insertArrayBlock) { varsDictArray.push({}); insertArrayBlock = false }
         if (templateWord.type === 'var') {
           addVariable(foundWord, templateWord, varsDictArray[varsDictArray.length - 1])
@@ -224,7 +268,7 @@ export const getVariables = (rule: UserRule, toknized: Token[], wordAfterArray: 
   );
 
   if (
-    !wordAfterArray &&
+    !endAfterArray.length &&
     toknized.length === 0 &&
     rule.parsed.every((t) => t.type === 'var')
   ) {
@@ -234,7 +278,7 @@ export const getVariables = (rule: UserRule, toknized: Token[], wordAfterArray: 
     }
   }
 
-  if (wordAfterArray) {
+  if (endAfterArray.length) {
     for (let arrayIndex = 0; arrayIndex < varsDictArray.length; arrayIndex++) {
       vars = varsDictArray[arrayIndex]
       if (!variableMatchRule(tempVars, vars)) varsDictArray.splice(+arrayIndex, 1)
@@ -246,6 +290,6 @@ export const getVariables = (rule: UserRule, toknized: Token[], wordAfterArray: 
   }
 
 
-  if (wordAfterArray) return varsDictArray
+  if (endAfterArray.length) return varsDictArray
   return vars;
 };

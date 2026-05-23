@@ -38,4 +38,28 @@ describe('getVariables array', () => {
 
     expect(getVariables(rule, tok, 0)).toBe(false)
   })
+
+  it('extracts multiple attrs when values contain slashes', () => {
+    const rule = makeRule('<{tag} {attrs}[{name}="{val}"]/>')
+    const tok = parseCode('<a href="/x" target="_blank" rel="noopener" />')
+
+    expect(getVariables(rule, tok, 0)).toEqual({
+      tag: 'a ',
+      attrs: [
+        { name: 'href', val: '/x' },
+        { name: 'target', val: '_blank' },
+        { name: 'rel', val: 'noopener' },
+      ],
+    })
+  })
+
+  it('extracts attr values that contain /> inside quotes', () => {
+    const rule = makeRule('<{tag} {attrs}[{name}="{val}"]/>')
+    const tok = parseCode('<a data="foo/>bar" />')
+
+    expect(getVariables(rule, tok, 0)).toEqual({
+      tag: 'a ',
+      attrs: [{ name: 'data', val: 'foo/>bar' }],
+    })
+  })
 })

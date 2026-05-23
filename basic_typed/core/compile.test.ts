@@ -347,3 +347,119 @@ describe('processCode', () => {
     )
   })
 })
+
+describe('processCode integration', () => {
+  it('compiles a document with many interacting rules, typed vars, arrays, and fallbacks', () => {
+    global.settingsFile = {
+      rules: [],
+      settings: {} as ExtendSettingsFile['settings'],
+      types: {
+        digit: /^\d+$/,
+        ident: /^[a-zA-Z_]\w*$/,
+      },
+    }
+
+    const rules = makeRules(
+      {
+        template: 'route {path}',
+        output: (vars) => `go("${String((vars as VarsDict).path).trim()}")`,
+      },
+      {
+        template: 'count {digit n}',
+        output: (vars) => `total=${(vars as VarsDict).n}`,
+      },
+      {
+        template: htmlAttrsTemplate,
+        output: (vars) => formatHtmlAttrs(vars as VarsDict),
+      },
+      {
+        template: 'pair {ident left} :: {ident right}',
+        output: (vars) => {
+          const { left, right } = vars as VarsDict
+          return `${String(left).trim()}::${String(right).trim()}`
+        },
+      },
+      {
+        template: '{a} op {b}',
+        output: (vars) => {
+          const { a, b } = vars as VarsDict
+          return `${String(a).trim()}<op>${String(b).trim()}`
+        },
+      },
+      {
+        template: 'set {ident key} = {val}',
+        output: (vars) => {
+          const { key, val } = vars as VarsDict
+          return `${String(key).trim()}=${String(val).trim()}`
+        },
+      },
+      {
+        template: '{x}!',
+        output: (vars) => `${String((vars as VarsDict).x).trim()}!`,
+      },
+      {
+        template: '{x}',
+        output: (vars) => {
+          const x = String((vars as VarsDict).x).trim()
+          if (x.startsWith('skip:')) return false
+          return `[${x}]`
+        },
+      },
+      {
+        template: '{x}',
+        output: (vars) => `fallback(${String((vars as VarsDict).x).trim()})`,
+      },
+    )
+
+    const source = [
+      'nav `{{route /api/users}}`',
+      'num `{{count 42}}` bad `{{count oops}}`',
+      'btn `{{<button type="submit" id="ok" />}}`',
+      'pair `{{pair foo :: bar}}`',
+      'math `{{10 op 20}}`',
+      'assign `{{set userId = alice}}`',
+      'bang `{{wow!}}`',
+      'skip `{{skip:broken}}`',
+      'plain `{{hello}}`',
+      'nest `{{wrap `{{core}}` tail}}`',
+      'multi `{{a}}` then `{{b}}`',
+    ].join('\n')
+
+    expect(processCode(source, rules).text).toBe(
+      [
+        'nav go("/api/users")',
+        'num total=42 bad [count oops]',
+        'btn button type submit id ok',
+        'pair foo::bar',
+        'math 10<op>20',
+        'assign userId=alice',
+        'bang wow!',
+        'skip fallback(skip:broken)',
+        'plain [hello]',
+        'nest [wrap [core] tail]',
+        'multi [a] then [b]',
+      ].join('\n'),
+    )
+  })
+
+  it('compiles html attribute array vars across tags with one or many attrs', () => {
+    const rules = makeRules({
+      template: htmlAttrsTemplate,
+      output: (vars) => formatHtmlAttrs(vars as VarsDict),
+    })
+
+    const source = [
+      'solo `{{<img src="logo.png" />}}`',
+      'duo `{{<input id="a" class="b" />}}`',
+      'many `{{<a href="/x" target="_blank" rel="noopener" />}}`',
+    ].join('\n')
+
+    expect(processCode(source, rules).text).toBe(
+      [
+        'solo img src logo.png',
+        'duo input id a class b',
+        'many a href /x target _blank rel noopener',
+      ].join('\n'),
+    )
+  })
+})

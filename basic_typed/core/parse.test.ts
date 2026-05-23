@@ -53,6 +53,17 @@ describe('parseTemplate', () => {
     ])
   })
 
+  it('keeps literal text after an array segment', () => {
+    expect(parseTemplate('{items}[{x}]]')).toEqual([
+      {
+        type: 'arrayVar',
+        name: 'items',
+        array: [{ value: 'x', type: 'var', str: 'x' }],
+      },
+      { value: ']', type: 'symbol', str: ']' },
+    ])
+  })
+
   it('keeps escaped brackets as literals instead of array syntax', () => {
     expect(parseTemplate('{array} #[{start}:{end}#]')).toEqual([
       { value: 'array', type: 'var', str: 'array ' },

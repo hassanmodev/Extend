@@ -44,7 +44,7 @@ const _parseTemplate = (text: string, parsingRule: boolean): Token[] => {
         array.push({ value: "", type: "arrayVar" });
         continue;
       }
-      else if (arrTerminals[1] === letter) {
+      else if (arrTerminals[1] === letter && inArr) {
         inArr = false;
         inVar = false;
         array.push({ type: "word", value: "" });
