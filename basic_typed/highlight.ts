@@ -1,6 +1,6 @@
-import { UserRule } from "./compile";
-import "./global"
-import { Token } from "./parse";
+import type { UserRule } from "./utils/types";
+import "./utils/global"
+import { Token } from "./core/parse";
 const fs = require("fs");
 const decomment = require("decomment");
 

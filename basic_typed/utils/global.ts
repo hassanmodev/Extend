@@ -1,4 +1,4 @@
-import type { UserRule } from "./compile"
+import type { UserRule } from "./types"
 
 export type ExtendSettings = {
   srcFolder: string

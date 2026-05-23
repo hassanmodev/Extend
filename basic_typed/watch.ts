@@ -1,10 +1,10 @@
 // next up better var detection
 // handle deleted files
-import "./global"
+import "./utils/global"
 import path = require("path");
-import * as example from "./example";
-import { UserRule } from "./compile";
-import type { ExtendSettingsFile } from "./global";
+import * as example from "./utils/example";
+import type { UserRule } from "./utils/types";
+import type { ExtendSettingsFile } from "./utils/global";
 const beautify = require('js-beautify')
 var commandLineArgs = require("command-line-args");
 var fs = require("fs");
