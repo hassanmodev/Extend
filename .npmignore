@@ -2,6 +2,9 @@
 *.no
 node_modules
 .vscode
-dist
 src
+idea
 polyglot-js
+.vscode
+re.js
+idea
