@@ -28,13 +28,13 @@ export const parseCli = (): CliOptions => {
 export const runCliActions = (options: CliOptions) => {
   if (options.help) {
     console.log(
-      "use --start or -s to create a basic example, \nPlease refer to https://github.com/se7smohamed/Extend for further help."
+      "use --start or -s to scaffold a polyglot demo project.\nPlease refer to https://github.com/hassanmodev/Extend for further help."
     )
     process.exit()
   }
 
   if (options.start) {
-    console.log("Creating a Hello World example.")
+    console.log("Creating a polyglot demo project.")
     example.text.forEach((file) => {
       fse.outputFileSync(file.file, file.text)
     })

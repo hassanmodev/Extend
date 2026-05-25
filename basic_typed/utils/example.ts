@@ -3,7 +3,7 @@ export const text = [
   {
     file: "_extend.js",
     text:
-`let settings = {
+`const settings = {
   srcFolder: 'src',
   distFolder: 'dist',
   codeOpening: '\`{{',
@@ -16,100 +16,151 @@ export const text = [
   vscodeHighlighting: true
 }
 
-const process = (filter, variable) => {
-  if(filter instanceof RegExp)
-    return variable.match(fitler)
-  else if (filter instanceof Function)
-    return filter(variable)
+const ident = /^[a-zA-Z_$][\\w$]*$/
+
+const types = {
+  int: /^\\d+$/,
+  ident,
+  any: () => true,
 }
 
-
-const and = (...filters) => 
-  variable => filters.every( filter => process(filter, variable) )
-
-const or = (...filters) => 
-  variable => filters.some( filter => process(filter, variable) )
-
-
-const startsWithA = variable => variable[0].toLowerCase() === 'a'
-const startsWithB = variable => variable[0].toLowerCase() === 'b'
-const experimental = (variable, vars, name) => {
-  vars.someOtherVariable = 'someOtherValue'
-  return variable.slice(0, -3)
-}
-
-let types = {
-  int: /^d+$/,
-  float: /^d+.d+$/,
-  // matches any thing (useless)
-  any: v => true,
-  // matches nothing (useless)
-  none: v => false,
-  // turns all variables into AAAAA (also useless)
-  AAAAA: v => 'AAAAA',
-  // 'and' + 'or' functions are both included in the starting project
-  startsWithAorB: or(startsWithA, startsWithB)
-}
-
-let rules = [
+const rules = [
+  // ── Python ────────────────────────────────────────────────────────────────
   {
-    template: '{array} #[{start}:{end}#]',
-    output: ({ array, start, end }) => {
-      if(!start) start = 0
-      if(!end.trim()) end = ''
-      else end = ','+end
-      return \`\${array}.slice(\${start} \${end})\`
-    }
+    id: 'py dict comprehension',
+    template: 'Object.fromEntries(#[ #[{key}, {val}#] for {elName} in {iterable} #])',
+    output: ({ iterable, elName, key, val }) =>
+      \`Object.fromEntries(\${iterable.trim()}.map(\${elName.trim()} => [\${key.trim()}, \${val.trim()}]))\`,
   },
   {
+    id: 'py list comprehension',
+    template: '#[ {el} for {elName} in {iterable} #]',
+    output: ({ iterable, el, elName }) =>
+      \`\${iterable.trim()}.map(\${elName.trim()} => \${el.trim()})\`,
+  },
+  {
+    id: 'py slice',
+    template: '{array} #[{start}:{end}#]',
+    output: ({ array, start, end }) => {
+      start = (start || '0').trim()
+      end = end.trim()
+      if (!end) return \`\${array.trim()}.slice(\${start})\`
+      return \`\${array.trim()}.slice(\${start}, \${end})\`
+    },
+  },
+  {
+    id: 'py index',
     template: '{array} #[{i}#]',
     output: ({ array, i }) => {
       i = i.trim()
       if (i.includes(':')) return false
-      return \`\${array}[\${i}>0 ? \${i} : \${array}.length+\${i}]\`
-    }
+      if (/^-\\d+$/.test(i)) return \`\${array.trim()}[\${array.trim()}.length \${i}]\`
+      return \`\${array.trim()}[\${i}]\`
+    },
   },
   {
-    template: '#[ {el} for {elName} in {array} #]',
-    output: function ({ array, el, elName }) {
-      return \`\${array}.map( \${elName}=> \${el})\`
-    }
+    id: 'py range 2',
+    template: 'range(#{start}, {end}#)',
+    output: ({ start, end }) =>
+      \`[...Array(\${end.trim()} - \${start.trim()}).keys()].map(i => i + \${start.trim()})\`,
   },
   {
-    template: 'for {i}:{max}#{{code}#}',
-    output: ({i,max,code}) => \`for(let \${i}=0; \${i}<\${max}; \${i}++){
-  \${code}}\`
-  }
+    id: 'py range 1',
+    template: 'range({n})',
+    output: ({ n }) => \`[...Array(\${n.trim()}).keys()]\`,
+  },
+  {
+    id: 'py conditional',
+    template: '{then} if {cnd} else {otherwise}',
+    output: ({ then, cnd, otherwise }) =>
+      \`(\${cnd.trim()} ? \${then.trim()} : \${otherwise.trim()})\`,
+  },
+  // ── Rust ──────────────────────────────────────────────────────────────────
+  {
+    id: 'rust unwrap-or',
+    template: '{expr}.unwrap_or({default})',
+    output: ({ expr, default: d }) => \`(\${expr.trim()} ?? \${d.trim()})\`,
+  },
+  {
+    id: 'rust if-let',
+    template: 'if let {name} = {expr}#{{code}#}',
+    output: ({ name, expr, code }) =>
+      \`if (\${expr.trim()} != null) { const \${name.trim()} = \${expr.trim()}; \${code} }\`,
+  },
+  {
+    id: 'rust fn',
+    template: 'fn {name}({params})#{{body}#}',
+    output: ({ name, params, body }) =>
+      \`function \${name.trim()}(\${params.trim()}) {\\n\${body}\\n}\`,
+  },
+
+  // ── Nim ───────────────────────────────────────────────────────────────────
+  {
+    id: 'nim range',
+    template: '{start}..{end}',
+    output: ({ start, end }) =>
+      \`[...Array(\${end.trim()} - \${start.trim()} + 1).keys()].map(i => i + \${start.trim()})\`,
+  },
+  {
+    id: 'nim echo',
+    template: 'echo {expr}',
+    output: ({ expr }) => \`console.log(\${expr.trim()})\`,
+  },
+  {
+    id: 'nim when',
+    template: 'when {expr}: #{ {code} #}',
+    output: ({ expr, code }) => \`if (\${expr.trim()}) { \${code} }\`,
+  },
+
+  // ── Zig ───────────────────────────────────────────────────────────────────
+  {
+    id: 'zig for',
+    template: 'for ({items}) |{item}| #{{body}#}',
+    output: ({ items, item, body }) =>
+      \`for (const \${item.trim()} of \${items.trim()}) {\\n\${body}\\n}\`,
+  },
+  {
+    id: 'zig orelse',
+    template: '{expr} orelse {default}',
+    output: ({ expr, default: d }) => \`(\${expr.trim()} ?? \${d.trim()})\`,
+  },
 ]
 
-module.exports = {rules, settings, types}`
+module.exports = { rules, settings, types }`
   },
   {
-    file: path.join("./src", "HelloWorld.xt.js"),
+    file: path.join("./src", "demo.xt.js"),
     text:
-`let employees = [
-  {name: 'emp0', salary: 1000},
-  {name: 'emp1', salary: 1320},
-  {name: 'emp1', salary: 1320},
-  {name: 'emp1', salary: 1620},
-  {name: 'emp2', salary: 1500},
-  {name: 'emp3', salary: 1100},
-  {name: 'emp4', salary: 2000},
+`// Polyglot JS — Python, Rust, Nim, and Zig idioms compiled to plain JS.
+
+const employees = [
+  { name: 'Alice', salary: 1000 },
+  { name: 'Bob', salary: 1320 },
+  { name: 'Carol', salary: 1620 },
 ]
 
-let salaries = \`{{ [employee.salary for employee in employees] }}\`
+// Python
+const salaries = \`{{ [e.salary for e in employees] }}\`
+const topTwo = \`{{ salaries[0:2] }}\`
+const lastSalary = \`{{ salaries[-1] }}\`
+const bonus = \`{{ 500 if lastSalary > 1500 else 200 }}\`
+const byName = \`{{ Object.fromEntries([[e.name, e.salary] for e in employees]) }}\`
 
-console.log(salaries)
+// Rust
+const maybeName = employees[0]?.name ?? null
+\`{{ if let name = maybeName { console.log(name) } }}\`
+const add = \`{{ fn add(a, b){ return a + b } }}\`
 
+// Nim
+const nimRange = \`{{ 1..5 }}\`
+\`{{ echo nimRange.join('-') }}\`
+\`{{ when salaries.length:{ print('payroll ready') } }}\`
 
-\`{{ for i:20 {
-  console.log("i is: " + i)
-} }}\`
+// Zig
+const tags = ['js', 'extend', 'polyglot']
+\`{{ for (tags) | tag |{  print(tag) } }}\`
+const fallback = \`{{ null orelse 'default' }}\`
 
-console.log(\`last salary is \${\`{{salaries[-1]}}\`}\`)
-console.log(\`Array slicing? \${\`{{salaries[1: -2]}}\`}\`)
-
-
-console.log(\`Unimpressed? feel free to create your own using the _extend.js file.\`)`
+console.log({ salaries, topTwo, lastSalary, bonus, byName, add, nimRange, fallback })`
   }
 ];

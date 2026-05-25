@@ -8,7 +8,7 @@
     "extendx": "extend"
   },
   "scripts": {
-    "t": "tsc basic_typed/watch.ts",
+    "t": "tsc -p tsconfig.json",
     "typed": "ts-node basic_typed/watch.ts",
     "start": "node basic_typed/watch.ts",
     "w": "node basic_typed/watch.js",
@@ -16,13 +16,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/se7smohamed/Extend.git"
+    "url": "git+https://github.com/hassanmodev/Extend.git"
   },
   "author": "Hassan",
   "bugs": {
-    "url": "https://github.com/se7smohamed/Extend/issues"
+    "url": "https://github.com/hassanmodev/Extend/issues"
   },
-  "homepage": "https://github.com/se7smohamed/Extend#readme",
+  "homepage": "https://github.com/hassanmodev/Extend#readme",
   "dependencies": {
     "@types/js-beautify": "^1.13.3",
     "chokidar": "^3.3.0",

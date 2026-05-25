@@ -1,95 +1,139 @@
 # Extend
 
-Extend is the tool to bring your the syntax you want to the language of your choice.
+Extend brings the syntax you want to the language of your choice. Write Python list comprehensions, Rust `if let`, Nim ranges, or Zig loops inside JavaScript — Extend compiles them to plain JS.
 
 ## Installation
-To get started you need to install Extend using 
+
+Install Extend globally:
+
 ```
 npm install -g extendx
 ```
-Please note we are going to use the name extend<u>x</u> for the cli for now.
 
-Syntax highlighting is under development and is partially supported on vscode, to start using it launch the command palette using `CTRL`+`P` and enter the command 
+The CLI is published as **extendx** for now.
+
+**Use this repo locally:** from the repo root run `npm link`. That installs the **`extendx`** command from your checkout (replacing any global npm install until you unlink). After changing TypeScript sources, rebuild with `npm run t`; the symlinked CLI loads `build/watch.js`.
+
+To depend on **extendx** from another project without publishing, run **`npm link extendx`** inside that project's folder (the dependency name is **`extendx`**, matching `"name"` in this package).
+
+Syntax highlighting is partially supported in VS Code. Open the command palette (`CTRL`+`P`) and run:
 
 ```
 ext install fabiospampinato.vscode-highlight
 ```
 
-this will install the extension [here](https://marketplace.visualstudio.com/items?itemName=fabiospampinato.vscode-highlight "Vscode highlight extension"), note this is going to write to .vscode/settings.json of your wokrspace, so you might want to backup this file.
+This installs the [vscode-highlight](https://marketplace.visualstudio.com/items?itemName=fabiospampinato.vscode-highlight) extension. It writes to `.vscode/settings.json` in your workspace, so you may want to back that file up first.
 
 ## Usage
 
-To create your first project use the command 
+Create a starter project:
 
 ```
 extendx --start
 ```
-which is going to create a basic project for you to start with.
 
-The first thing that you are going to need is the `_extend.js` file inside your root directory,
-this is where your *rules* live and is just a normal javascript with a few exports, one of which is `rules`, more about that in a second.
+This scaffolds `_extend.js` (your rules) and `src/demo.xt.js` (a polyglot demo).
 
-The compiler will then look for code inside your `src` folder, only files with extensions `.xt` or `.xt.js` will be processed.
-in this stage of development, the compiler will require a character or more to indicate blocks of code that will require compiling.
+The compiler reads files from `src/` with extensions `.xt` or `.xt.js`, finds blocks marked with your code delimiters, applies matching rules, and writes output to `dist/`.
 
-in this example we used the mustache syntax, but it's up to you to choose any syntax you like, you might want to use multiline string / comment syntax of your programming language to avoid your code being highlighted as an error by your IDE.
+By default, code blocks use backtick-wrapped mustache syntax:
 
-eg:&nbsp; `var salaries = {{ [employee.salary for employee in employees] }}`
+```
+const salaries = `{{ [e.salary for e in employees] }}`
+```
 
-Once done, the compiler will write the processed version of your code to `dist` folder.
+You can choose any opening/closing markers in `_extend.js` — comment syntax from your target language works well so your IDE does not flag extensions as errors.
 
+## Polyglot demo
 
+The starter project includes rules for idioms from several languages. Source (`src/demo.xt.js`):
+
+```javascript
+// Python
+const salaries = `{{ [e.salary for e in employees] }}`
+const topTwo = `{{ salaries[0:2] }}`
+const lastSalary = `{{ salaries[-1] }}`
+const bonus = `{{ 500 if lastSalary > 1500 else 200 }}`
+
+// Rust
+`{{ if let name = maybeName { console.log(name) } }}`
+const add = `{{ fn add(a, b){ return a + b } }}`
+
+// Nim
+const nimRange = `{{ 1..5 }}`
+`{{ echo nimRange.join('-') }}`
+
+// Zig
+`{{ for (tags) | tag |{ print(tag) } }}`
+const fallback = `{{ null orelse 'default' }}`
+```
+
+Compiled output (`dist/demo.js`):
+
+```javascript
+const salaries = employees.map(e => e.salary)
+const topTwo = salaries.slice(0, 2)
+const lastSalary = salaries[salaries.length - 1]
+const bonus = (lastSalary > 1500 ? 500 : 200)
+
+if (maybeName != null) { const name = maybeName; console.log(name) }
+const add = function add(a, b) { return a + b }
+
+const nimRange = [...Array(5 - 1 + 1).keys()].map(i => i + 1)
+console.log(nimRange.join('-'))
+
+for (const tag of tags) { print(tag) }
+const fallback = (null ?? 'default')
+```
+
+Run the watcher from your project root:
+
+```
+extendx
+```
+
+Or compile once from the Extend repo against the bundled `polyglot-js/` example:
+
+```
+cd polyglot-js && node ../extend
+```
 
 ## Working with rules
 
-Each rule is a js `Object` consisting of two parts: `template` and `output`.
-`template` is what the compiler is going to looking for, it describes what your rule looks like. let's take python slicing for example:
+Each rule is a plain object with `template` and `output`.
 
-`{array} #[{start}:{end}#]`
+`template` describes what to match. Variables use `{variableName}`. Escape special characters with `#` (the default escape character).
 
+Python slicing example:
 
-Here we have declared three variables `array`, `start` and `end`, using the syntax `{variableName}`, as you can see we have escaped the squared brackets, otherwise, the compiler would treat variable differently, specifically as an array, but let's not worry about that now.
+```
+{array} #[{start}:{end}#]
+```
 
-To start using these variables, you will need the second part of the rule, the `output`.
+`output` is a function that receives the captured variables and returns the replacement string. Return `false` to skip a match (e.g. when a variable is invalid or another rule should win).
 
 ```javascript
-function ({ array, start, end }) {
-  return `${array}.slice(${start}, ${end})`
+{
+  id: 'py slice',
+  template: '{array} #[{start}:{end}#]',
+  output: ({ array, start, end }) => {
+    start = (start || '0').trim()
+    end = end.trim()
+    if (!end) return `${array.trim()}.slice(${start})`
+    return `${array.trim()}.slice(${start}, ${end})`
+  },
 }
 ```
 
-
-The `output` is a normal javascript function that receives an object containing all variables that the compiler found, it can be a good idea to use destructuring here.
-
-The return of this function is what the compiler is going write to your code. if for any reason you think that something went wrong and you don't want to process this code, eg: variable is undefined, or it's conflicting with a different rule, you need to return `false`.
-
-One last thing you need to know is the escape character is the `#` sign, which you have already seen.
-
-
-
-Feel free to try it live on http://extend.netlify.com/ (might be out of date).
-<br/>
-<br/>
-
-
-#### Deprecated
-#### Arrays
-An array is a special type of variable that matches repetitive syntax.
-
-here is an example for a rule that extracts html attributes using one.
-```javascript
-rule.template = '<{elementName} {attributesArray}["{attrName}"="{value}"] />'
-```
-
+Rules can optionally include an `id` for debugging. See `polyglot-js/_extend.js` for a full ruleset covering Python, Rust, Nim, and Zig.
 
 ## `_extend.js` file
-`_extend.js` is a file that lives in your projects root directory and has 3 exports: `rules`, `settings` for the `compiler`, as well as `types`.
 
+`_extend.js` lives in your project root and exports `rules`, `settings`, and `types`.
 
 ### Settings
-The default settings are as follows, note that `codeOpening` and `codeClosing` are for your source code files and are used to highlight code that needs to be processed, you can use whatever you want, or you can use the string / comment syntax of your programming language as mentioned above, note that you want to use two different strings for opening and closing.
 
-`variableOpening`, `variableClosing`, `arrayOpening`, and `arrayClosing` all apply to your templates, inside your `_extend.js` file.
+Default settings:
 
 ```javascript
 module.exports.settings = {
@@ -106,30 +150,28 @@ module.exports.settings = {
 }
 ```
 
-### Types
-Types is a object that serves as a way for you to control what each of your variables should like. each type will have a name which is going to be used inside your `_extend.js` file, the value can either be a Regex or a js function which receives the variable, and returns `true` if the variable fits the requirements.
+- `codeOpening` / `codeClosing` — delimiters in your source files
+- `variableOpening` / `variableClosing` — variable syntax in rule templates
+- `arrayOpening` / `arrayClosing` — array repetition syntax in templates
+- `escapeCharacter` — escapes literal characters in templates (default `#`)
 
-\[experimental\]: You can return a string from the type function which is going to replace the existing variable. you also receive both the variables block, containing all found variables in this rule, as well as current variable name as the second and third argument, feel free to play around with those.
+### Types
+
+Types validate or transform captured variables. Each type is a name mapped to a `RegExp` or a function that returns `true`/`false` (or a replacement string).
 
 ```javascript
-var startsWithA = variable => variable[0].toLowerCase() === 'a'
-var startsWithB = variable => variable[0].toLowerCase() === 'b'
+const ident = /^[a-zA-Z_$][\w$]*$/
+
 module.exports.types = {
   int: /^\d+$/,
-  float: /^\d+\.\d+$/,
-  // matches any thing (useless)
-  any: v => true,
-  // matches nothing (useless)
-  none: v => false,
-  // turns all variables into AAAAA (also useless)
-  AAAAA: v => 'AAAAA',
-  // 'and' + 'or' functions are both included in the starting project
-  startsWithAorB: or(startsWithA, startsWithB)
+  ident,
+  any: () => true,
 }
 ```
 
-to use the type you declare your variables as: `{startsWithAorB MyVariable}`, which will only accept variables that match this filter.
+Use a type in a template: `{ident myVar}` — only values matching `ident` are accepted.
 
+[experimental]: Type functions also receive the full variable block and the current variable name. Returning a string replaces the captured value.
 
 ## What's new
 
