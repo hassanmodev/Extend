@@ -4,9 +4,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.unbalanced = exports.parseTemplate = exports.parseCode = void 0;
-const settings_1 = __importDefault(require("./settings"));
+const settings_1 = __importDefault(require("../utils/settings"));
 const _parseTemplate = (text, parsingRule) => {
-    var symbolsArray = "'\"\\/,`!@#$%^&*+-;:?><=[]{}().".split("");
+    var symbolsArray = "'\"\\/,`!@#$%^&*+-;:?><=[]{}().|~".split("");
     let terminals = [settings_1.default.variableOpening, settings_1.default.variableClosing];
     let arrTerminals = [settings_1.default.arrayOpening, settings_1.default.arrayClosing];
     let escapeChar = settings_1.default.escapeCharacter;
@@ -33,16 +33,14 @@ const _parseTemplate = (text, parsingRule) => {
         // findvars is for parsing templates..
         if (parsingRule) {
             if (arrTerminals[0] === letter) {
-                console.error(`Array variables are disabled: {arrayname}[...], please remove this rule: \n"${text.substring(0, 40)}"`);
-                process.exit();
-                // inArr = true;
-                // inVar = true;
-                // array.push({ value: "", type: "arrayVar" });
-                // continue;
-            }
-            else if (arrTerminals[1] === letter) {
-                inArr = false;
+                inArr = true;
                 inVar = true;
+                array.push({ value: "", type: "arrayVar" });
+                continue;
+            }
+            else if (arrTerminals[1] === letter && inArr) {
+                inArr = false;
+                inVar = false;
                 array.push({ type: "word", value: "" });
                 continue;
             }
@@ -113,33 +111,26 @@ const _parseTemplate = (text, parsingRule) => {
         }
     }
     array = array.filter((w) => Object.keys(w).length && w && w.value !== "");
-    const ll = (...a) => {
-        // if (!findVars)
-        //   console.log(...a)
-    };
-    array.forEach((word, i) => {
-        ll(word);
-        if (word.type === "arrayVar") {
-            ll('ind222');
+    array.forEach((token, i) => {
+        if (token.type === "arrayVar") {
             let obj = {
                 type: "arrayVar",
                 name: array[i - 1].value,
-                array: parseTemplate(word.str),
+                array: parseTemplate(token.str),
             };
             array[i] = obj;
             array.splice(i - 1, 1);
         }
-        else if (word.type === "var") {
-            ll('xxxx');
-            if (!word.value)
+        else if (token.type === "var") {
+            if (!token.value)
                 return;
-            word.value = word.value.trim();
-            let wordArray = word.value.split(/\s/);
+            token.value = token.value.trim();
+            let wordArray = token.value.split(/\s/);
             if (!parsingRule)
-                console.log(word, wordArray, parsingRule);
+                console.log(token, wordArray, parsingRule);
             if (wordArray.length > 1) {
-                word.rest = wordArray.slice(0, -1);
-                word.value = wordArray[wordArray.length - 1];
+                token.rest = wordArray.slice(0, -1);
+                token.value = wordArray[wordArray.length - 1];
             }
         }
     });
@@ -164,7 +155,7 @@ let defaultPairs = [
     { array: ["//", "\n"], ignore: 1 },
     { array: ["/*", "*/"], ignore: 1 },
 ];
-let checkPair = (pairObj, word) => pairObj.array[1] === word;
+let checkPair = (pairObj, needle) => pairObj.array[1] === needle;
 let unbalanced = (str, pairs) => {
     pairs = pairs || defaultPairs;
     if (!(pairs && pairs.length) || !str)

@@ -9,7 +9,7 @@ export type Token = {
 export type TokenInited = Required<Token> & { rest?: any }
 
 const _parseTemplate = (text: string, parsingRule: boolean): Token[] => {
-  var symbolsArray = "'\"\\/,`!@#$%^&*+-;:?><=[]{}().|".split("");
+  var symbolsArray = "'\"\\/,`!@#$%^&*+-;:?><=[]{}().|~".split("");
   let terminals = [settings.variableOpening, settings.variableClosing];
   let arrTerminals = [settings.arrayOpening, settings.arrayClosing];
   let escapeChar = settings.escapeCharacter;

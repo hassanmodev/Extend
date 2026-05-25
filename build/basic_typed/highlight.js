@@ -1,4 +1,6 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+require("./utils/global");
 const fs = require("fs");
 const decomment = require("decomment");
 let colors = {
@@ -61,8 +63,9 @@ var createRegex = (words, terminals = ["`{{", "}}`"]) => {
     };
     var nextWord = (words, i) => words.slice(i).find(w => w.type === 'word' || w.type === 'symbol');
     words.forEach((word, i) => {
+        var _a, _b;
         if (word.type === "word" || word.type === "symbol") {
-            text += group("[\\s]*" + escapeRegex(word.value) + "[\\s]*");
+            text += group("[\\s]*" + escapeRegex((_a = word.value) !== null && _a !== void 0 ? _a : "") + "[\\s]*");
             groups.push(colors[word.type] || colors["default"]);
         }
         else {
@@ -73,7 +76,7 @@ var createRegex = (words, terminals = ["`{{", "}}`"]) => {
             let ored = escaped ? escaped + '|' + terminals[1] : escaped;
             // console.log(anyButWord(ored), escaped)
             text += `${(anyButWord(ored) || anyButWord(terminals[1]))}`;
-            groups.push(colors[word.type] || colors["default"]);
+            groups.push(colors[((_b = word.type) !== null && _b !== void 0 ? _b : '')] || colors["default"]);
         }
     });
     text += group(terminals[1]);
